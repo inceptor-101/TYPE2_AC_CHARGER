@@ -28,20 +28,56 @@ CANSEQUNION can_message_seq2_phcurr;
 CANSEQUNION3 can_message_seq3_info;
 //#######Declaring the multipliers##########
 SENSEDVALUES multipliers = {
-     .grid_voltage = 0.003367f,
+     .grid_voltage_R = 296.9697f,
+     .grid_voltage_Y = 296.9697f,
+     .grid_voltage_B = 296.9697f,
      .cp_signal = 0.12023f,
-     .grid_curr = 0.0f,
-     .prot_earth = 1.0f/245.0f,
-     .residual_curr = 0.0f,
+     .grid_curr_R = 110.57f,
+     .grid_curr_Y = 110.57f,
+     .grid_curr_B = 110.57f,
+     .prot_earth = 44.636f,
+     .residual_curr = 0.3676f,
      .temp_sens = 0.0f,
      .vbatt = 25.0f
 };
 
 //#########Declaring the offsets#########
-SENSEDVALUES offsets = {
-     .grid_voltage = 1.65f,
-     .cp_signal = 1.65f,
-     .grid_curr = 0.0f,
+SENSEDVALUES AvgOffsets = {
+     .grid_voltage_R = 0.0f,
+     .grid_voltage_Y = 0.0f,
+     .grid_voltage_B = 0.0f,
+     .cp_signal = 0.0f,
+     .grid_curr_R = 0.0f,
+     .grid_curr_Y = 0.0f,
+     .grid_curr_B = 0.0f,
+     .prot_earth = 0.0f,
+     .residual_curr = 0.0f,
+     .temp_sens = 0.0f,
+     .vbatt = 0.0f
+};
+
+SENSEDVALUES sum_values = {
+     .grid_voltage_R = 0.0f,
+     .grid_voltage_Y = 0.0f,
+     .grid_voltage_B = 0.0f,
+     .cp_signal = 0.0f,
+     .grid_curr_R = 0.0f,
+     .grid_curr_Y = 0.0f,
+     .grid_curr_B = 0.0f,
+     .prot_earth = 0.0f,
+     .residual_curr = 0.0f,
+     .temp_sens = 0.0f,
+     .vbatt = 0.0f
+};
+
+SENSEDVALUES rmsvalues = {
+     .grid_voltage_R = 0.0f,
+     .grid_voltage_Y = 0.0f,
+     .grid_voltage_B = 0.0f,
+     .cp_signal = 0.0f,
+     .grid_curr_R = 0.0f,
+     .grid_curr_Y = 0.0f,
+     .grid_curr_B = 0.0f,
      .prot_earth = 0.0f,
      .residual_curr = 0.0f,
      .temp_sens = 0.0f,
@@ -50,7 +86,7 @@ SENSEDVALUES offsets = {
 
 Uint32 count = 0;
 Uint32 canCount = 0;
-Uint16 samples = 0;
+Uint16 samples = samplingFreq/signalFreq;
 Uint16 Pwmstatus = OFF;
 unsigned char transmit[8];
 uint16_t CANTxData[8];
@@ -59,10 +95,18 @@ RXDATA getdata;
 Uint16 EvseState = OFF;
 Uint16 special = 0;
 Uint16 seconds = 5;
+Uint32 counter = 0;
+volatile float tempSensRes = 0.0f;
+volatile float actualTemp = 0.0f;
+float beta = 3977.0f;
+offsetstatemachine currstate = oneseconddelaymode;
+Uint32 transition_counter = 0;
+float sample_time = 0.000005;
+float EvStateVolt = 0.0f;
+float cpSignalBuffer = 0.0f;
+
 void main(void)
 {
-
-
 
     CANTxData[0] = 1;
     CANTxData[1] = 4;
@@ -136,12 +180,14 @@ void main(void)
 //    -------------------------------------------------------------------
     InitCpuTimer(seconds);
     EALLOW;
-    GpioDataRegs.GPADAT.bit.GPIO20 = 1; // Uncomment to turn LED OFF
-    GpioDataRegs.GPADAT.bit.GPIO22 = 0;
+//    GpioDataRegs.GPADAT.bit.GPIO20 = 1; // Uncomment to turn LED OFF
+//    GpioDataRegs.GPADAT.bit.GPIO22 = 0;
+    GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;        //Initially set to 0
+    enableBuff;
     EDIS;
-
+    turnMainRelayOff;
     while (true){
-
+        counter++;
     }
 
 }  //end of main

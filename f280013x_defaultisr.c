@@ -373,121 +373,181 @@ interrupt void USER12_ISR(void)
 // 1.1 - ADCA Interrupt 1
 //
 
+static inline void UtilsRMS(void){
+    rmsvalues.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)samples);
+    rmsvalues.grid_curr_R = sqrtf(sum_values.grid_curr_R/(float)samples);
+    rmsvalues.grid_curr_Y = sqrtf(sum_values.grid_curr_Y/(float)samples);
+    rmsvalues.grid_voltage_B = sqrtf(sum_values.grid_voltage_B/(float)samples);
+    rmsvalues.grid_voltage_R = sqrtf(sum_values.grid_voltage_R/(float)samples);
+    rmsvalues.grid_voltage_Y = sqrtf(sum_values.grid_voltage_Y/(float)samples);
+    rmsvalues.prot_earth = sqrtf(sum_values.prot_earth/(float)samples);
+    rmsvalues.residual_curr = sqrtf(sum_values.residual_curr/(float)samples);
+
+    memset(&sum_values, 0, sizeof(sum_values));
+}
+
+static inline void UtilsEVstate(void){
+
+}
+
 interrupt void ADCA1_ISR(void){
 
 //    ---------------CODE FOR DETECTING THE SENSED VARIABLES AND GETTING ACTUAL VALUES USING THE OFFSET-----------------
 //    -----------------Storing all of the sensed parameters in their corresponding allocated variables------------------
-    sensedAnalogADC.grid_voltage = (resultADCA[0])*(3.3/4096.0);
-    sensedAnalogADC.prot_earth = (resultADCA[1])*(3.3/4096.0);
-    sensedAnalogADC.vbatt = (resultADCA[2])*(3.3/4096.0);
-    sensedAnalogADC.residual_curr = (resultADCA[3])*(3.3/4096.0);
-    sensedAnalogADC.grid_curr = (resultADCC[0])*(3.3/4096.0);
-    sensedAnalogADC.cp_signal = (resultADCC[1])*(3.3/4096.0);
-    sensedAnalogADC.temp_sens = (resultADCC[2])*(3.3/4096.0);
+    sensedAnalogADC.grid_voltage_R = (AdccResultRegs.ADCRESULT0)*(3.3/4096.0);
+    sensedAnalogADC.grid_voltage_B = (AdcaResultRegs.ADCRESULT0)*(3.3/4096.0);
+    sensedAnalogADC.grid_voltage_Y = (AdcaResultRegs.ADCRESULT1)*(3.3/4096.0);
+    sensedAnalogADC.prot_earth = (AdccResultRegs.ADCRESULT1)*(3.3/4096.0);
+    sensedAnalogADC.vbatt = (AdcaResultRegs.ADCRESULT2)*(3.3/4096.0);
+    sensedAnalogADC.temp_sens = (AdccResultRegs.ADCRESULT2)*(3.3/4096.0);
+    sensedAnalogADC.cp_signal = (AdcaResultRegs.ADCRESULT3)*(3.3/4096.0);
+    sensedAnalogADC.residual_curr = (AdccResultRegs.ADCRESULT3)*(3.3/4096.0);
+    sensedAnalogADC.grid_curr_B = (AdcaResultRegs.ADCRESULT4)*(3.3/4096.0);
+    sensedAnalogADC.grid_curr_Y = (AdccResultRegs.ADCRESULT4)*(3.3/4096.0);
+    sensedAnalogADC.grid_curr_R = (AdcaResultRegs.ADCRESULT5)*(3.3/4096.0);
 
-//    ----------------CODE FOR FINDIND THE RMS VALUE AND THE AVERAGE VALUE OF THE GRID VOLTAGE WAVEFORM------------------
+//    Getting the new temperature resistance
+    tempSensRes = (25500.0f/(sensedAnalogADC.temp_sens)) - 10200.0f;
 
-    static float sinval = 0.0;
-    static float rmsvalue = 0.0;
-    static float rmsbuffer = 0.0;
-    static float avgval = 0.0;
-    static float avgvalbuf = 0.0;
+//    For finding the temperature at every sample of the resistance found or calculated
+    sensedAnalogADC.actualTemp = (1.0f/((1/298.0f) + ((1/beta) * logf(tempSensRes/10000.0)))) - 273.0f; // in degree celsius
 
-//    Writing the code for finding the RMS value
-    samples++;
-//    compensating for the offset and multiplier
-    actualsensedvalues.grid_voltage = (sensedAnalogADC.grid_voltage-offsets.grid_voltage)/(multipliers.grid_voltage);
-    rmsbuffer = rmsbuffer + (actualsensedvalues.grid_voltage*actualsensedvalues.grid_voltage);
-    avgvalbuf = avgvalbuf + actualsensedvalues.grid_voltage;
+    // Developing the statemachine
+    switch (currstate){
+        case oneseconddelaymode: {
+            transition_counter++;
+            if (transition_counter >= oneSecDelayCounter){
+                currstate = offsetcalcmode;
+                transition_counter = 0;
+            }
+            break;
+        }
 
-////    Since we are assuming that the original sine wave has the frequency of 50Hz thus no of samples = 10000/50 = 200 samples
-    if (samples>=2000){
-//        GpioDataRegs.GPATOGGLE.bit.GPIO20 = 1;
-        samples = 0;
-        rmsvalue = sqrtf(rmsbuffer/2000.0);
-        avgval = avgvalbuf/2000.0;
-        avgvalbuf = 0.0;
-        rmsbuffer = 0.0;
+        case offsetcalcmode: {
+            transition_counter++;
+            sum_values.grid_curr_B += sensedAnalogADC.grid_curr_B;
+            sum_values.grid_curr_R += sensedAnalogADC.grid_curr_R;
+            sum_values.grid_curr_Y += sensedAnalogADC.grid_curr_Y;
+            sum_values.residual_curr += sensedAnalogADC.residual_curr;
+            sum_values.grid_voltage_B += sensedAnalogADC.grid_voltage_B;
+            sum_values.grid_voltage_R += sensedAnalogADC.grid_voltage_R;
+            sum_values.grid_voltage_Y += sensedAnalogADC.grid_voltage_Y;
+            sum_values.prot_earth += sensedAnalogADC.prot_earth;
+
+            if (transition_counter >= oneSecDelayCounter){
+                AvgOffsets.grid_curr_B = sum_values.grid_curr_B/(float)transition_counter;
+                AvgOffsets.grid_curr_R = sum_values.grid_curr_R/(float)transition_counter;
+                AvgOffsets.grid_curr_Y = sum_values.grid_curr_Y/(float)transition_counter;
+                AvgOffsets.residual_curr = sum_values.residual_curr/(float)transition_counter;
+                AvgOffsets.grid_voltage_B = sum_values.grid_voltage_B/(float)transition_counter;
+                AvgOffsets.grid_voltage_R = sum_values.grid_voltage_R/(float)transition_counter;
+                AvgOffsets.grid_voltage_Y = sum_values.grid_voltage_Y/(float)transition_counter;
+                AvgOffsets.prot_earth = sum_values.prot_earth/(float)transition_counter;
+
+//                Reinitialising the sum structure values
+                transition_counter = 0;
+                memset(&sum_values, 0, sizeof(sum_values));
+
+//                Switching to the new active state
+                currstate = activemode;
+            }
+            break;
+        }
+
+        case activemode: {
+            transition_counter++;
+//            Found out the actual value of the various parameters
+            actualsensedvalues.grid_curr_B = (sensedAnalogADC.grid_curr_B-AvgOffsets.grid_curr_B)*multipliers.grid_curr_B;
+            actualsensedvalues.grid_curr_R = (sensedAnalogADC.grid_curr_R-AvgOffsets.grid_curr_R)*multipliers.grid_curr_R;
+            actualsensedvalues.grid_curr_Y = (sensedAnalogADC.grid_curr_Y-AvgOffsets.grid_curr_Y)*multipliers.grid_curr_Y;
+            actualsensedvalues.grid_voltage_B = (sensedAnalogADC.grid_voltage_B-AvgOffsets.grid_voltage_B)*multipliers.grid_voltage_B;
+            actualsensedvalues.grid_voltage_R = (sensedAnalogADC.grid_voltage_R-AvgOffsets.grid_voltage_R)*multipliers.grid_voltage_R;
+            actualsensedvalues.grid_voltage_Y = (sensedAnalogADC.grid_voltage_Y-AvgOffsets.grid_voltage_Y)*multipliers.grid_voltage_Y;
+            actualsensedvalues.prot_earth = (sensedAnalogADC.prot_earth-AvgOffsets.prot_earth)*multipliers.prot_earth;
+            actualsensedvalues.residual_curr = (sensedAnalogADC.residual_curr-AvgOffsets.residual_curr)*multipliers.residual_curr;
+            actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal-AvgOffsets.cp_signal)*multipliers.cp_signal;
+
+            sum_values.grid_curr_B += (actualsensedvalues.grid_curr_B*actualsensedvalues.grid_curr_B);
+            sum_values.grid_curr_R += (actualsensedvalues.grid_curr_R*actualsensedvalues.grid_curr_R);
+            sum_values.grid_curr_Y += (actualsensedvalues.grid_curr_Y*actualsensedvalues.grid_curr_Y);
+            sum_values.grid_voltage_B += (actualsensedvalues.grid_voltage_B*actualsensedvalues.grid_voltage_B);
+            sum_values.grid_voltage_R += (actualsensedvalues.grid_voltage_R*actualsensedvalues.grid_voltage_R);
+            sum_values.grid_voltage_Y += (actualsensedvalues.grid_voltage_Y*actualsensedvalues.grid_voltage_Y);
+            sum_values.prot_earth += (actualsensedvalues.prot_earth*actualsensedvalues.prot_earth);
+            sum_values.residual_curr += (actualsensedvalues.residual_curr*actualsensedvalues.residual_curr);
+
+//            cpSignalBuffer += actualsensedvalues.
+
+            if (transition_counter >= 400){
+                transition_counter = 0;
+                UtilsRMS();
+            }
+            break;
+        }
     }
 
-//    ----------------CODE FOR SENSING THE AMPLITUDE OF THE CP-SIGNAL WAVEFORM---------------
-    static volatile float amplitude;
-    static volatile float ampbuf = 0.0;
-    static volatile Uint16 samples_cp = 0;
-
-    actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal - offsets.cp_signal)/(multipliers.cp_signal);
-//    ADJUSTING THE OFFSET
-    if (actualsensedvalues.cp_signal <= 1 && samples_cp>0){
-        amplitude = ampbuf/samples_cp;
-        ampbuf = 0.0;
-        samples_cp = 0;
-    }
-
-    if (actualsensedvalues.cp_signal > 1){
-        samples_cp++;
-        ampbuf += actualsensedvalues.cp_signal;
-    }
-
-
-//    --------------CODE FOR THE PROTECTIVE EARTH-------------------
-    actualsensedvalues.prot_earth = (sensedAnalogADC.prot_earth - offsets.prot_earth)/(multipliers.prot_earth);
-
-//    ---------------CODE FOR THE BATTERY SENSING--------------------
-    actualsensedvalues.vbatt = (sensedAnalogADC.vbatt - offsets.vbatt)/(multipliers.vbatt);
-
-//    ---------------CODE FOR THE TEMPERATURE SENSING--------------------
-    actualsensedvalues.temp_sens = (sensedAnalogADC.temp_sens - offsets.temp_sens)/(multipliers.temp_sens);
-
-//    ---------------CODE FOR THE RESIDUAL CURRENT SENSING--------------------
-    actualsensedvalues.residual_curr = (sensedAnalogADC.residual_curr - offsets.residual_curr)/(multipliers.residual_curr);
-
-//    ---------------CODE FOR THE BATTERY SENSING--------------------
-    actualsensedvalues.grid_curr = (sensedAnalogADC.grid_curr - offsets.grid_curr)/(multipliers.grid_curr);
-
-//    -----------TRAMSMITTING THE ACTUAL SENSED VALUES OVER THE CAN BUS TO THE MICROCONTROLLER FOR THE FURTHER PROCESSING--------------
-    canCount++;
-    if (canCount > 1000000){
-        canCount = 0;
-
-        // Configuring transmission for sequence number 1
-        can_message_seq1_phvolt.phase_seq.Seq_number        = 0x01;
-        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseA = 0x10;
-        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseA = 0x10;
-        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseB = 0x01;
-        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseB = 0x01;
-        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = 0x01;
-        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = 0x10;
-        can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
-
-        CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
-
-//        Configuring for the transmission of the sequence number 2
-        // Configuring transmission for sequence number 2 in correct order
-        can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
-        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = 0x01;
-        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseA = 0x01;
-        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseB = 0x01;
-        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseB = 0x01;
-        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = 0x01;
-        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = 0x01;
-        can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
-
-        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
-
-//        Configuring for the transmission using the sequence number 3
-        // Configuring transmission for sequence number 3 in correct order
-        can_message_seq3_info.phase_seq.Seq_number           = 0x03;
-        can_message_seq3_info.phase_seq.Upper_Byte_RCMU      = 0x01;
-        can_message_seq3_info.phase_seq.Lower_Byte_RCMU      = 0x01;
-        can_message_seq3_info.phase_seq.Upper_Byte_NEvoltage = 0x01;
-        can_message_seq3_info.phase_seq.Lower_Byte_NEvoltage = 0x01;
-        can_message_seq3_info.phase_seq.Cp_state             = 0x01;
-        can_message_seq3_info.phase_seq.DutyCycle            = 0x01;
-        can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
-
-        CAN_sendMessage(CANA_BASE, 3, 8, can_message_seq3_info.can_seq);
-
-    }
+////    ----------------CODE FOR SENSING THE AMPLITUDE OF THE CP-SIGNAL WAVEFORM---------------
+//    static volatile float amplitude;
+//    static volatile float ampbuf = 0.0;
+//    static volatile Uint16 samples_cp = 0;
+//
+//    actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal - offsets.cp_signal)/(multipliers.cp_signal);
+////    ADJUSTING THE OFFSET
+//    if (actualsensedvalues.cp_signal <= 1 && samples_cp>0){
+//        amplitude = ampbuf/samples_cp;
+//        ampbuf = 0.0;
+//        samples_cp = 0;
+//    }
+//
+//    if (actualsensedvalues.cp_signal > 1){
+//        samples_cp++;
+//        ampbuf += actualsensedvalues.cp_signal;
+//    }
+//
+//
+//    canCount++;
+//    if (canCount > 1000000){
+//        canCount = 0;
+//
+//        // Configuring transmission for sequence number 1
+//        can_message_seq1_phvolt.phase_seq.Seq_number        = 0x01;
+//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseA = 0x10;
+//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseA = 0x10;
+//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseB = 0x01;
+//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseB = 0x01;
+//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = 0x01;
+//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = 0x10;
+//        can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
+//
+//        CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
+//
+////        Configuring for the transmission of the sequence number 2
+//        // Configuring transmission for sequence number 2 in correct order
+//        can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
+//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseA = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseB = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseB = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = 0x01;
+//        can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
+//
+//        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
+//
+////        Configuring for the transmission using the sequence number 3
+//        // Configuring transmission for sequence number 3 in correct order
+//        can_message_seq3_info.phase_seq.Seq_number           = 0x03;
+//        can_message_seq3_info.phase_seq.Upper_Byte_RCMU      = 0x01;
+//        can_message_seq3_info.phase_seq.Lower_Byte_RCMU      = 0x01;
+//        can_message_seq3_info.phase_seq.Upper_Byte_NEvoltage = 0x01;
+//        can_message_seq3_info.phase_seq.Lower_Byte_NEvoltage = 0x01;
+//        can_message_seq3_info.phase_seq.Cp_state             = 0x01;
+//        can_message_seq3_info.phase_seq.DutyCycle            = 0x01;
+//        can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
+//
+//        CAN_sendMessage(CANA_BASE, 3, 8, can_message_seq3_info.can_seq);
+//
+//    }
 
 //    ---Acknowledgement of the interrupt----
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;         // Must acknowledge the PIE group

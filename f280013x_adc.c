@@ -143,50 +143,57 @@ void MyInitADC(void){
     asm(" EALLOW");                     // Enable EALLOW protected register access
 
     //----- We are trying to configure the trigger and desired start of conversion channel----
-    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM7 SOC A
-    AdcaRegs.ADCSOC0CTL.bit.CHSEL           = 0x2;    // Convert channel ADC A1: Grid Current
+    AdcaRegs.ADCSOC0CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC0CTL.bit.CHSEL           = 3;    // Convert channel ADC A3: B phase voltage
     AdcaRegs.ADCSOC0CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
-    AdcaRegs.ADCSOC1CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdcaRegs.ADCSOC1CTL.bit.CHSEL           = 0x3;    // Convert channel ADC A2: Grid Voltage
-    AdcaRegs.ADCSOC1CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
+    AdcaRegs.ADCSOC1CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC1CTL.bit.CHSEL           = 6;    // Convert channel ADC A6: Y phase voltage
+    AdcaRegs.ADCSOC1CTL.bit.ACQPS           = 0xB;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
-    AdcaRegs.ADCSOC2CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdcaRegs.ADCSOC2CTL.bit.CHSEL           = 0x15;    // Convert channel ADC A3: DC Link Voltage
+    AdcaRegs.ADCSOC2CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC2CTL.bit.CHSEL           = 15;    // Convert channel ADC A15: Battery voltage sensing
     AdcaRegs.ADCSOC2CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
-    AdcaRegs.ADCSOC3CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdcaRegs.ADCSOC3CTL.bit.CHSEL           = 0x1;    // Convert channel ADC A4: Heat Sink Temperature
+    AdcaRegs.ADCSOC3CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC3CTL.bit.CHSEL           = 11;    // Convert channel ADC A11:  Pilot signal sensing
     AdcaRegs.ADCSOC3CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
-//    AdcaRegs.ADCSOC4CTL.bit.TRIGSEL         = 0x0D;    // Trigger by ePWM5 SOC A
-//    AdcaRegs.ADCSOC4CTL.bit.CHSEL           = 0x05;    // Convert channel ADC A6: CT for ZEC
-//    AdcaRegs.ADCSOC4CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
+    AdcaRegs.ADCSOC4CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC4CTL.bit.CHSEL           = 12;    // Convert channel ADC A12:  B - phase current sensing
+    AdcaRegs.ADCSOC4CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
+
+    AdcaRegs.ADCSOC5CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdcaRegs.ADCSOC5CTL.bit.CHSEL           = 1;    // Convert channel ADC A1:  R - phase current sensing
+    AdcaRegs.ADCSOC5CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
 //----- SOC (SOC0, SOC1, SOC2...) Configuration for ADC C: START -----
 
-    AdccRegs.ADCSOC0CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdccRegs.ADCSOC0CTL.bit.CHSEL           = 0x3;    // Convert channel ADC C15: PV Current
+    AdccRegs.ADCSOC0CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdccRegs.ADCSOC0CTL.bit.CHSEL           = 6;    // Convert channel ADC C6: R phase voltage (GPIO 226)
     AdccRegs.ADCSOC0CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
-    AdccRegs.ADCSOC1CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdccRegs.ADCSOC1CTL.bit.CHSEL           = 0x6;    // Convert channel ADC C7: PV Voltage
+    AdccRegs.ADCSOC1CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdccRegs.ADCSOC1CTL.bit.CHSEL           = 9;    // Convert channel ADC C9: It is used for the protective earth sensing
     AdccRegs.ADCSOC1CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
-//
-    AdccRegs.ADCSOC2CTL.bit.TRIGSEL         = 0x11;    // Trigger by ePWM4 SOC A
-    AdccRegs.ADCSOC2CTL.bit.CHSEL           = 0x0;    // Convert channel ADC C1: Grid Inductor Copper Temperature
+
+    AdccRegs.ADCSOC2CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdccRegs.ADCSOC2CTL.bit.CHSEL           = 2;    // Convert channel ADC C2: Temperature sensing
     AdccRegs.ADCSOC2CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
+
+    AdccRegs.ADCSOC3CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdccRegs.ADCSOC3CTL.bit.CHSEL           = 15;    // Convert channel ADC C15: Residual current sensing
+    AdccRegs.ADCSOC3CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
+
+    AdccRegs.ADCSOC4CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
+    AdccRegs.ADCSOC4CTL.bit.CHSEL           = 3;    // Convert channel ADC C3: Y phase current sensing
+    AdccRegs.ADCSOC4CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
     //----- Configuring ADC A Interrupt-1 and disable ADC C interrupts  : START -----
 
      AdcaRegs.ADCINTSEL1N2.bit.INT1CONT      = 1;     // Interrupt pulses
      AdcaRegs.ADCINTSEL1N2.bit.INT1E         = 1;     // ADC A interrupt enable
-     AdcaRegs.ADCINTSEL1N2.bit.INT1SEL       = 3;     // EOC5 triggers the interrupt
-
-//     AdcaRegs.ADCINTSEL1N2.bit.INT2CONT      = 1;     // Interrupt pulses
-//     AdcaRegs.ADCINTSEL1N2.bit.INT2E         = 1;     // ADC A interrupt enable
-//     AdcaRegs.ADCINTSEL1N2.bit.INT2SEL       = 4;     // EOC4 triggers the interrupt
-
+     AdcaRegs.ADCINTSEL1N2.bit.INT1SEL       = 5;     // EOC5 triggers the interrupt
 
      AdccRegs.ADCINTSEL1N2.bit.INT1E         = 0;     // ADC C interrupt disable
 

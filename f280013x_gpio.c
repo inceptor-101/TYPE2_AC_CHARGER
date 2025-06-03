@@ -145,7 +145,7 @@ InitGpio()
     GpioCtrlRegs.GPADIR.bit.GPIO20 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO6 = 1;
-    GpioCtrlRegs.GPADIR.bit.GPIO8 = 1;
+    //GpioCtrlRegs.GPADIR.bit.GPIO8 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO16 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO4 = 1;          // For making it the output for the transmission
     GpioCtrlRegs.GPAPUD.all   = 0x00000000;     // All pullups enabled
@@ -185,19 +185,23 @@ InitGpio()
 // ################################################################################################
 
 //    CONFIGURATION FOR THE PINS OF THE TYPE 2 AC CHARGER PROJECT
-    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO224 = 1;    //
-    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO242 = 1;    //------THESE THREE PINS ARE CONFIGURED TO BE USED AS THE ADC INSTEAD OF THE GPIO
-    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO226 = 1;    //
+    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO226 = 1;    //Used for the sensing of the R phase voltage
+    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO242 = 1;    //Used for the sensing of the B phase voltage
+    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO228 = 1;    //Used for the sensing of the Y phase voltage
+    AnalogSubsysRegs.AGPIOCTRLH.bit.GPIO224 = 1;    //Used for the protective earth voltage sensin
     AnalogSubsysRegs.AGPIOCTRLA.bit.GPIO12 = 0;
     AnalogSubsysRegs.AGPIOCTRLA.bit.GPIO13 = 0;
+
 //    CONFIGURATION OF THE LED
     AnalogSubsysRegs.AGPIOCTRLA.bit.GPIO20 = 0;     //CONFIGURED THE LED 20 FOR THE DIGITAL OUTPUT (FOR GPIO AGPIOCTRLA=0)
 
+    GpioCtrlRegs.GPHAMSEL.bit.GPIO226 = 1;          //Used for the sensing of the R phase voltage
+    GpioCtrlRegs.GPHAMSEL.bit.GPIO242 = 1;          //Used for the sensing of the B phase voltage
+    GpioCtrlRegs.GPHAMSEL.bit.GPIO228 = 1;          //Used for the sensing of the Y phase voltage
+    GpioCtrlRegs.GPHAMSEL.bit.GPIO224 = 1;          //Used for the protective earth voltage sensing
     GpioCtrlRegs.GPAAMSEL.bit.GPIO13 = 0;
     GpioCtrlRegs.GPAAMSEL.bit.GPIO12 = 0;
-    GpioCtrlRegs.GPHAMSEL.bit.GPIO224 = 1;          //
-    GpioCtrlRegs.GPHAMSEL.bit.GPIO242 = 1;          //------THESE THREE PINS ARE CONFIGURED TO BE USED AS THE ADC INSTEAD OF THE GPIO
-    GpioCtrlRegs.GPHAMSEL.bit.GPIO226 = 1;          //
+
 //    CONFIGURATION OF THE LED
     GpioCtrlRegs.GPAAMSEL.bit.GPIO20 = 0;   //CONFIGURED THE LED 20 (FOR GPIO GPAAMSEL=0)
 
@@ -214,7 +218,7 @@ InitGpio()
 
     //-----------------------------------------------------------------------------------------------------
     GpioCtrlRegs.GPAGMUX1.bit.GPIO1 = 0;        // 0|1 = PWM Signal
-    GpioCtrlRegs.GPAMUX1.bit.GPIO1  = 1;
+    GpioCtrlRegs.GPAMUX1.bit.GPIO1  = 0;
 
     //-----------------------------------------------------------------------------------------------------
     GpioCtrlRegs.GPAGMUX1.bit.GPIO2 = 0;        // 0|1 = PWM Signal
@@ -257,7 +261,7 @@ InitGpio()
     GpioCtrlRegs.GPAMUX1.bit.GPIO7  = 1;
 
     GpioCtrlRegs.GPAGMUX1.bit.GPIO8 = 0;        // 0|0 = Digital Output
-    GpioCtrlRegs.GPAMUX1.bit.GPIO8  = 1;
+    GpioCtrlRegs.GPAMUX1.bit.GPIO8  = 0;
 
     //-----------------------------------------------------------------------------------------------------
     GpioCtrlRegs.GPAGMUX1.bit.GPIO12 = 0;        // 3|1 = CANA RX
@@ -312,6 +316,8 @@ InitGpio()
 
     //******* Making GPIO pins as Output Pins: START *******
 
+    GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;          //Digital output for relay control: Type 2 AC
+    GpioCtrlRegs.GPADIR.bit.GPIO8 = 1;          //Digital output for relay control: Type 2 AC
     GpioCtrlRegs.GPADIR.bit.GPIO6 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO7 = 1;
     GpioCtrlRegs.GPADIR.bit.GPIO16 = 1;

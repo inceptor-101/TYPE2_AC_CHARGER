@@ -100,6 +100,9 @@ extern Uint16 secureRamFuncs_loadsize;
 extern Uint16 secureRamFuncs_runstart;
 extern Uint16 Cla1Prog_Start;
 extern Uint16 special;
+extern volatile float tempSensRes;
+extern volatile float actualTemp;
+extern float beta;
 
 //---------------------------------------------------------------------------
 // Global Variables References
@@ -191,6 +194,12 @@ typedef struct {
     float fixedPFSet;
 } inverterModeSettings;
 
+typedef enum{
+    oneseconddelaymode,
+    offsetcalcmode,
+    activemode,
+}offsetstatemachine;
+
 extern float inverterRatedPower;
 extern Uint16 inverterON_OFF;
 extern Uint16 mpptMode;
@@ -204,16 +213,26 @@ extern voltsToTemp IndGridCopper;
 extern voltsToTemp IndPvCore;
 extern voltsToTemp IndPvCopper;
 extern voltsToTemp heatSink;
+extern offsetstatemachine currstate;
+extern Uint32 transition_counter;
+extern float sample_time;
+extern float EvStateVolt;
+extern float cpSignalBuffer;
 
 //#########################DEFINING THE STRUCTURES FOR THE TYPE TWO AC CHARGER#####################################
 typedef struct {
-    float grid_voltage;
+    float grid_voltage_R;
+    float grid_voltage_Y;
+    float grid_voltage_B;
     float prot_earth;
     float vbatt;
     float residual_curr;
-    float grid_curr;
+    float grid_curr_R;
+    float grid_curr_Y;
+    float grid_curr_B;
     float cp_signal;
     float temp_sens;
+    float actualTemp;
 } SENSEDVALUES;
 
 typedef enum{
@@ -284,11 +303,13 @@ typedef enum{
 extern SENSEDVALUES sensedAnalogADC;
 extern SENSEDVALUES actualsensedvalues;
 extern SENSEDVALUES multipliers;
-extern SENSEDVALUES offsets;
+extern SENSEDVALUES AvgOffsets;
 extern CANSEQUNION can_message_seq1_phvolt;
 extern CANSEQUNION can_message_seq2_phcurr;
 extern CANSEQUNION3 can_message_seq3_info;
 extern RXDATA getdata;
+extern SENSEDVALUES sum_values;
+extern SENSEDVALUES rmsvalues;
 extern Uint16 EvseState;
 
 //VARIABLES
@@ -511,7 +532,6 @@ typedef enum {
 //
 //#define CANPeriodTestON  GpioDataRegs.GPBSET.bit.GPIO37
 //#define CANPeriodTestOFF GpioDataRegs.GPBCLEAR.bit.GPIO37
-
 //---------------------------------------------------------------------------
 // Macros
 //
@@ -526,6 +546,17 @@ typedef enum {
 #define CalAdcbINL (void   (*)(void))0x0703B2
 #define CalAdccINL (void   (*)(void))0x0703B0
 #define CalAdcdINL (void   (*)(void))0x0703AE
+
+//For the testing
+#define turnMainRelayOn (GpioDataRegs.GPASET.bit.GPIO1 = 1)
+#define turnMainRelayOff (GpioDataRegs.GPACLEAR.bit.GPIO1 = 1)
+#define enableBuff (GpioDataRegs.GPACLEAR.bit.GPIO8 = 1)
+#define disableBuff (GpioDataRegs.GPASET.bit.GPIO8 = 1)
+
+//For the sensing purposes
+#define oneSecDelayCounter 20000
+#define samplingFreq 20000
+#define signalFreq 50
 
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.
