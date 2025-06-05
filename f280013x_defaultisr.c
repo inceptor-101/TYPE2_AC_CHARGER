@@ -369,10 +369,6 @@ interrupt void USER12_ISR(void)
     for(;;);
 }
 
-
-// 1.1 - ADCA Interrupt 1
-//
-
 static inline void UtilsRMS(void){
 //    For the RMS values calculations
     rmsvalues.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)rmsSamples);
@@ -400,7 +396,7 @@ static inline void current2DutyCycle(void){
         dutyCycle = ((inputCurrent/(2.5f)) + 64.0f)/(100.0f);
     }
     else {
-        dutyCycle = 0;
+        dutyCycle = 0.0f;
     }
 }
 
@@ -438,9 +434,24 @@ static inline void UtilsEVstate(){
     cpSignalBuffer = 0.0f;
 }
 
+// 1.1 - ADCA Interrupt 1
+//
+
 interrupt void ADCA1_ISR(void){
-//    Updating the duty cycle
-    current2DutyCycle();
+//    Start Charging
+    if ((EVSE_Ready_To_Charge==2) && (EVSEstate==CP_STATE_B)){  //Implementing when the evse is ready to charge and command is released from the mcu
+        current2DutyCycle();    //Updating the duty cycle based on the current
+        turnMainRelayOn;
+    }
+
+    if ((EVSE_Ready_To_Charge==1) && ((EVSEstate==CP_STATE_B)||(EVSEstate==CP_STATE_C)) ){  //Implementing when the evse is ready to charge and command is released from the mcu
+        dutyCycle = 1.0f;       //Changing the duty cycle to 100%
+        turnMainRelayOff;
+    }
+
+    if ((EVSE_Ready_To_Charge==1) && (EVSEstate==CP_STATE_A) ){  //Implementing when the evse is ready to charge and command is released from the mcu
+        dutyCycle = 0.0f;       //Changing the duty cycle to 0%
+    }
 
 //    Setting the epwm duty cycle
     Uint16 cmpaval = dutyCycle*(float)TBPRDEPWM1;
@@ -469,6 +480,7 @@ interrupt void ADCA1_ISR(void){
     // Developing the statemachine
     switch (currstate){
         case oneseconddelaymode: {
+            turnMainRelayOff;
             transition_counter++;
             if (transition_counter >= oneSecDelayCounter){
                 currstate = offsetcalcmode;
@@ -605,6 +617,7 @@ interrupt void ADCA1_ISR(void){
         buffer = (Uint16) (dutyCycle*100.0f);
         can_message_seq3_info.phase_seq.DutyCycle            = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
+        can_message_seq3_info.phase_seq.Reserved             = 0xffffffff;
 
 //        CAN_sendMessage(CANA_BASE, 3, 8, can_message_seq3_info.can_seq);
 
@@ -1474,19 +1487,13 @@ interrupt void CANA0_ISR(void)
         objectID = CAN_getInterruptCause(CANA_BASE);
     }
 
-//    ##############FOR THE ACTUAL MESSAGE TO BE RECEIVED BY CAN FROM THE MCU####################
-    if (objectID == 7){
-//        DATA FROM THE RECEIVER IS GETTING STORED IN THE CANRxData
-        CAN_readMessage(CANA_BASE, objectID, CANRxData);
+//    Now the actual data has got stored in the getdata.rsgMsgObjSeq2
+    SeqNumberReceived = getdata.rsgMsgObjSeq2[0];
+    EVSE_Ready_To_Charge = getdata.rsgMsgObjSeq2[1];
+    inputCurrent = (float)getdata.rsgMsgObjSeq2[2];
 
-//        Fetching the evse status from the MCU
-        if (CANRxData[1] == 0){
-            EvseState = OFF;
-        }
-
-        if (CANRxData[1] == 1){
-            EvseState = ON;
-        }
+    if (EVSE_Ready_To_Charge == 2){
+        dutyCycle = 1.0f;
     }
 
 //    Restoring to previous configuration of the interrupts
@@ -1814,4 +1821,3 @@ interrupt void NOTUSED_ISR(void)
 //
 // End of File
 //
-

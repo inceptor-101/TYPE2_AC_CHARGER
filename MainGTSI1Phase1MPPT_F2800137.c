@@ -112,7 +112,11 @@ float inputCurrent = 0.0f;
 float epwmState = 0.0f;
 Uint16 sendMessageNow = 0;
 states EVSEstate = CP_STATE_A;
-
+Uint16 canBufferSeq1[4];
+Uint16 canBufferSeq2[4];
+Uint16 canBufferSeq3[4];
+Uint16 EVSE_Ready_To_Charge = 0;
+Uint16 SeqNumberReceived;
 void main(void)
 {
 
@@ -187,18 +191,18 @@ void main(void)
 //    ---------------CAN CODE WAS AFTER  THAT---------------------------
 //    -------------------------------------------------------------------
     InitCpuTimer(seconds);
-    EALLOW;
 //    GpioDataRegs.GPADAT.bit.GPIO20 = 1; // Uncomment to turn LED OFF
 //    GpioDataRegs.GPADAT.bit.GPIO22 = 0;
-    GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;        //Initially set to 0
+
+//    Configuration of the main relay
     enableBuff;
-    EDIS;
     turnMainRelayOff;
+
     while (true){
         if (sendMessageNow == 1){
-            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq);
+            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
             DELAY_US(consecutiveMsgDelay);
-            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq2_phcurr.can_seq);
+            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
             DELAY_US(consecutiveMsgDelay);
             CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq3_info.can_seq);
             sendMessageNow = 0;

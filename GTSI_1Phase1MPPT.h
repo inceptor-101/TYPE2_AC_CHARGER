@@ -278,6 +278,8 @@ typedef struct{
     uint16_t Cp_state;
     uint16_t DutyCycle;
     uint16_t ConnectorState;
+    uint32_t Reserved;
+
 }CAN_SEQ3;
 
 typedef struct{
@@ -570,6 +572,12 @@ extern float currWaveForm[samplingFreq/signalFreq];
 #define TBPRDEPWM1 30000
 extern float inputCurrent;
 extern Uint16 epwmSamples;
+extern Uint16 canBufferSeq1[4];
+extern Uint16 canBufferSeq2[4];
+extern Uint16 canBufferSeq3[4];
+extern Uint16 EVSE_Ready_To_Charge;
+extern Uint16 SeqNumberReceived;
+extern states EVSEstate;
 
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.
