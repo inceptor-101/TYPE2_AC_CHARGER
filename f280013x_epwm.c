@@ -83,11 +83,12 @@ void InitEPwm(void)
      EPwm1Regs.TBCTL.bit.HSPCLKDIV          = 0;
      EPwm1Regs.TBCTL.bit.CLKDIV             = 1;                   // Clock to EPWM Module is 60 MHz
      EPwm1Regs.TBCTL.bit.CTRMODE            = 0x2;                 // Count Up-Down Mode
-     EPwm1Regs.TBPRD                        = 30000;               // 1 kHz switching frequency set
+     EPwm1Regs.TBPRD                        = TBPRDEPWM1;               // 1 kHz switching frequency set
 
      EPwm1Regs.AQCTLA.all                   = 0x0000;              // Normal Sine-Triangle PWM
      EPwm1Regs.AQCTLA.bit.CAU               = 0x1;                 // Set output low on cmpa up
      EPwm1Regs.AQCTLA.bit.CAD               = 0x2;                 // Set output high on cmpa down
+     EPwm1Regs.CMPA.bit.CMPA                = 0x0;                 // Comparator set to value of zero
 
      // ********** EPWM1 Initialization: END **************
 

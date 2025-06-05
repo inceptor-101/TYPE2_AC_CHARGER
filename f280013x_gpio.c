@@ -232,12 +232,12 @@ InitGpio()
 
     // Added below GPIO4 and GPIO5, GPIO23, GPIO37 configurations for testing with Launchpad --> remove it afterwareds
 
-    GpioCtrlRegs.GPAGMUX1.bit.GPIO4 = 1;        // 1|2 = CANA TX Signal
-    GpioCtrlRegs.GPAMUX1.bit.GPIO4  = 2;
+    GpioCtrlRegs.GPAGMUX1.bit.GPIO4 = 0;        // 1|2 = CANA TX Signal
+    GpioCtrlRegs.GPAMUX1.bit.GPIO4  = 0;
     GpioCtrlRegs.GPAQSEL1.bit.GPIO4 = 3;
 
-    GpioCtrlRegs.GPAGMUX1.bit.GPIO5 = 1;        // 1|2 = CANA RX Signal
-    GpioCtrlRegs.GPAMUX1.bit.GPIO5  = 2;
+    GpioCtrlRegs.GPAGMUX1.bit.GPIO5 = 0;        // 1|2 = CANA RX Signal
+    GpioCtrlRegs.GPAMUX1.bit.GPIO5  = 0;
     GpioCtrlRegs.GPAQSEL1.bit.GPIO5 = 3;
 
     GpioCtrlRegs.GPAGMUX2.bit.GPIO23 = 0;        // Output GPIO to test ADC periodicity
@@ -279,11 +279,11 @@ InitGpio()
 
     //-----------------------------------------------------------------------------------------------------
     GpioCtrlRegs.GPAGMUX2.bit.GPIO18 = 0;        // 0|2 = SCIB TX
-    GpioCtrlRegs.GPAMUX2.bit.GPIO18  = 2;
+    GpioCtrlRegs.GPAMUX2.bit.GPIO18  = 3;
 
     //-----------------------------------------------------------------------------------------------------
     GpioCtrlRegs.GPAGMUX2.bit.GPIO19 = 0;        // 0|2 = SCIB RX
-    GpioCtrlRegs.GPAMUX2.bit.GPIO19  = 2;
+    GpioCtrlRegs.GPAMUX2.bit.GPIO19  = 3;
 
     GpioCtrlRegs.GPAGMUX2.bit.GPIO20 = 0;        // 0|2 = SCIB RX
     GpioCtrlRegs.GPAMUX2.bit.GPIO20  = 0;

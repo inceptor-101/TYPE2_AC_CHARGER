@@ -19,8 +19,6 @@
 #define PWM_PERIOD_BOOST    300                      // 300 = 100 kHz switching frequency with 60 MHz ePWM clock (Triangular)
 #define PWM_FOR_ADC_SAMPLING 300                  // 2400 = 12.5 kHz sampling rate with 60 MHz ePWM clock (Triangular)
 // Type-2 State Machine
-extern Uint16 state;
-
 
 
 //---------------------------------------------------------------------------
@@ -75,6 +73,8 @@ extern void InitCpuTimer(Uint16 seconds);
 extern Uint16 seconds;
 extern Uint16 Result;
 extern Uint32 Count;
+extern float dutyCycle;
+extern float epwmState;
 
 //---------------------------------------------------------------------------
 // CLA Function Prototypes
@@ -198,6 +198,12 @@ typedef enum{
     oneseconddelaymode,
     offsetcalcmode,
     activemode,
+    stateA,
+    stateB,
+    stateC,
+    stateD,
+    stateE,
+    stateF
 }offsetstatemachine;
 
 extern float inverterRatedPower;
@@ -216,7 +222,7 @@ extern voltsToTemp heatSink;
 extern offsetstatemachine currstate;
 extern Uint32 transition_counter;
 extern float sample_time;
-extern float EvStateVolt;
+extern float EvStateAvgVolt;
 extern float cpSignalBuffer;
 
 //#########################DEFINING THE STRUCTURES FOR THE TYPE TWO AC CHARGER#####################################
@@ -245,15 +251,14 @@ typedef enum{
     tempsens
 }sensedparams;
 
-typedef enum
-{
-    STATUS_NOT_CONNECTED_FAULTY = 0,
-    STATUS_NOT_CONNECTED_FINE = 1,
-    STATUS_CONNECTED_FAULTY = 2,
-    STATUS_CONNECTED_NOT_CHARGING = 3,
-    STATUS_CONNECTED_CHARGING = 4,
-    STATUS_CONNECTED_CHARGING_COMPLETE = 5
-} ConnectionStatus;
+typedef enum {
+    CP_STATE_A = 0,  // No vehicle connected (12V)
+    CP_STATE_B,      // Vehicle connected but not requesting charging (9V)
+    CP_STATE_C,      // Vehicle connected and requesting charging (6V)
+    CP_STATE_D,      // Vehicle connected, charging with ventilation required (3V)
+    CP_STATE_E,      // Error: short to ground or voltage < 3V
+    CP_STATE_F       // Error: CP shorted to +12V
+}states;
 
 typedef struct{
     uint16_t Seq_number;
@@ -268,10 +273,8 @@ typedef struct{
 
 typedef struct{
     uint16_t Seq_number;
-    uint16_t Upper_Byte_RCMU;
-    uint16_t Lower_Byte_RCMU;
-    uint16_t Upper_Byte_NEvoltage;
-    uint16_t Lower_Byte_NEvoltage;
+    uint16_t Byte_RCMU;
+    uint16_t Byte_NEvoltage;
     uint16_t Cp_state;
     uint16_t DutyCycle;
     uint16_t ConnectorState;
@@ -311,14 +314,16 @@ extern RXDATA getdata;
 extern SENSEDVALUES sum_values;
 extern SENSEDVALUES rmsvalues;
 extern Uint16 EvseState;
+extern Uint16 sendMessageNow;
 
 //VARIABLES
 extern Uint32 count;
-extern Uint16 samples;
+//extern Uint16 samples;
 extern unsigned char transmit[8];
 extern Uint32 canCount;
 extern volatile Uint16* resultADCA;
 extern volatile Uint16* resultADCC;
+extern states EVSEstate;
 
 //###############################END OF THE VARIABLES###############################
 
@@ -368,7 +373,7 @@ extern float igHardwareTripLimit;
 extern float igSoftwareTripLimit;
 extern float ipvHardwareTripLimit;
 extern float ipvSoftwareTripLimit;
-extern Uint16 samples;
+extern Uint16 rmsSamples;
 
 extern void Delay_ms(Uint16);
 
@@ -555,8 +560,16 @@ typedef enum {
 
 //For the sensing purposes
 #define oneSecDelayCounter 20000
+#define canMessageSendCounter 2000
+#define consecutiveMsgDelay 20000
 #define samplingFreq 20000
 #define signalFreq 50
+#define pwmfreq 1000
+extern float voltWaveForm[samplingFreq/signalFreq];
+extern float currWaveForm[samplingFreq/signalFreq];
+#define TBPRDEPWM1 30000
+extern float inputCurrent;
+extern Uint16 epwmSamples;
 
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.

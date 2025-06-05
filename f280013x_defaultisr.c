@@ -374,23 +374,77 @@ interrupt void USER12_ISR(void)
 //
 
 static inline void UtilsRMS(void){
-    rmsvalues.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)samples);
-    rmsvalues.grid_curr_R = sqrtf(sum_values.grid_curr_R/(float)samples);
-    rmsvalues.grid_curr_Y = sqrtf(sum_values.grid_curr_Y/(float)samples);
-    rmsvalues.grid_voltage_B = sqrtf(sum_values.grid_voltage_B/(float)samples);
-    rmsvalues.grid_voltage_R = sqrtf(sum_values.grid_voltage_R/(float)samples);
-    rmsvalues.grid_voltage_Y = sqrtf(sum_values.grid_voltage_Y/(float)samples);
-    rmsvalues.prot_earth = sqrtf(sum_values.prot_earth/(float)samples);
-    rmsvalues.residual_curr = sqrtf(sum_values.residual_curr/(float)samples);
+//    For the RMS values calculations
+    rmsvalues.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)rmsSamples);
+    rmsvalues.grid_curr_R = sqrtf(sum_values.grid_curr_R/(float)rmsSamples);
+    rmsvalues.grid_curr_Y = sqrtf(sum_values.grid_curr_Y/(float)rmsSamples);
+    rmsvalues.grid_voltage_B = sqrtf(sum_values.grid_voltage_B/(float)rmsSamples);
+    rmsvalues.grid_voltage_R = sqrtf(sum_values.grid_voltage_R/(float)rmsSamples);
+    rmsvalues.grid_voltage_Y = sqrtf(sum_values.grid_voltage_Y/(float)rmsSamples);
+    rmsvalues.prot_earth = sqrtf(sum_values.prot_earth/(float)rmsSamples);
+    rmsvalues.residual_curr = sqrtf(sum_values.residual_curr/(float)rmsSamples);
 
+//    For the average values calculations
+    rmsvalues.actualTemp = sum_values.actualTemp/(float)rmsSamples;
+    rmsvalues.vbatt = sum_values.vbatt/(float)rmsSamples;
+
+//    Resetting the sum structure
     memset(&sum_values, 0, sizeof(sum_values));
 }
 
-static inline void UtilsEVstate(void){
+static inline void current2DutyCycle(void){
+    if (inputCurrent >= 6.0f && inputCurrent <= 51.0f){
+        dutyCycle = inputCurrent/(60.0f);
+    }
+    else if (inputCurrent > 51 && inputCurrent <= 80){
+        dutyCycle = ((inputCurrent/(2.5f)) + 64.0f)/(100.0f);
+    }
+    else {
+        dutyCycle = 0;
+    }
+}
 
+static inline void getCurrentState(){
+    epwmState = ((1/dutyCycle)*(((EvStateAvgVolt - 1.451629f)/(0.1202346f)) + (12.0f * (1 - dutyCycle))));
+
+    if (epwmState >= 10.0f){
+        EVSEstate = CP_STATE_A;
+        return;
+    }
+    else if (epwmState >= 7.0f){
+        EVSEstate = CP_STATE_B;
+        return;
+    }
+    else if (epwmState >= 4.0f){
+        EVSEstate = CP_STATE_C;
+        return;
+    }
+    else if (epwmState >= 1.0f){
+        EVSEstate = CP_STATE_D;
+        return;
+    }
+    else if (epwmState >= -2.0f){
+        EVSEstate = CP_STATE_E;
+        return;
+    }
+    else{
+        EVSEstate = CP_STATE_F;
+        return;
+    }
+}
+
+static inline void UtilsEVstate(){
+    EvStateAvgVolt = cpSignalBuffer/(20.0f);
+    cpSignalBuffer = 0.0f;
 }
 
 interrupt void ADCA1_ISR(void){
+//    Updating the duty cycle
+    current2DutyCycle();
+
+//    Setting the epwm duty cycle
+    Uint16 cmpaval = dutyCycle*(float)TBPRDEPWM1;
+    EPwm1Regs.CMPA.bit.CMPA = cmpaval;
 
 //    ---------------CODE FOR DETECTING THE SENSED VARIABLES AND GETTING ACTUAL VALUES USING THE OFFSET-----------------
 //    -----------------Storing all of the sensed parameters in their corresponding allocated variables------------------
@@ -465,8 +519,8 @@ interrupt void ADCA1_ISR(void){
             actualsensedvalues.grid_voltage_Y = (sensedAnalogADC.grid_voltage_Y-AvgOffsets.grid_voltage_Y)*multipliers.grid_voltage_Y;
             actualsensedvalues.prot_earth = (sensedAnalogADC.prot_earth-AvgOffsets.prot_earth)*multipliers.prot_earth;
             actualsensedvalues.residual_curr = (sensedAnalogADC.residual_curr-AvgOffsets.residual_curr)*multipliers.residual_curr;
-            actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal-AvgOffsets.cp_signal)*multipliers.cp_signal;
 
+//            For few we need to find the RMS values
             sum_values.grid_curr_B += (actualsensedvalues.grid_curr_B*actualsensedvalues.grid_curr_B);
             sum_values.grid_curr_R += (actualsensedvalues.grid_curr_R*actualsensedvalues.grid_curr_R);
             sum_values.grid_curr_Y += (actualsensedvalues.grid_curr_Y*actualsensedvalues.grid_curr_Y);
@@ -476,78 +530,85 @@ interrupt void ADCA1_ISR(void){
             sum_values.prot_earth += (actualsensedvalues.prot_earth*actualsensedvalues.prot_earth);
             sum_values.residual_curr += (actualsensedvalues.residual_curr*actualsensedvalues.residual_curr);
 
-//            cpSignalBuffer += actualsensedvalues.
+//            For the average values
+            sum_values.actualTemp += (sensedAnalogADC.actualTemp);
+            sum_values.vbatt += (actualsensedvalues.vbatt);
 
+//            Adding the cp signal in the buffer for the storage
+            cpSignalBuffer += (sensedAnalogADC.cp_signal);
+
+//            For processing the cp signal buffer
+            if (transition_counter%20 == 0){
+                UtilsEVstate();                 // Using this function the value of the EvStateAvgVoltage will be updated
+                getCurrentState();              // Finding the state of the EV
+            }
+
+//            Finding the RMS after fetching 400 samples
             if (transition_counter >= 400){
                 transition_counter = 0;
                 UtilsRMS();
             }
+
+//            For the testing purposes only
+//            voltWaveForm[transition_counter] = actualsensedvalues.grid_voltage_B;
+//            currWaveForm[transition_counter] = actualsensedvalues.grid_curr_B;
             break;
         }
     }
 
-////    ----------------CODE FOR SENSING THE AMPLITUDE OF THE CP-SIGNAL WAVEFORM---------------
-//    static volatile float amplitude;
-//    static volatile float ampbuf = 0.0;
-//    static volatile Uint16 samples_cp = 0;
-//
-//    actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal - offsets.cp_signal)/(multipliers.cp_signal);
-////    ADJUSTING THE OFFSET
-//    if (actualsensedvalues.cp_signal <= 1 && samples_cp>0){
-//        amplitude = ampbuf/samples_cp;
-//        ampbuf = 0.0;
-//        samples_cp = 0;
-//    }
-//
-//    if (actualsensedvalues.cp_signal > 1){
-//        samples_cp++;
-//        ampbuf += actualsensedvalues.cp_signal;
-//    }
-//
-//
-//    canCount++;
-//    if (canCount > 1000000){
-//        canCount = 0;
-//
-//        // Configuring transmission for sequence number 1
-//        can_message_seq1_phvolt.phase_seq.Seq_number        = 0x01;
-//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseA = 0x10;
-//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseA = 0x10;
-//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseB = 0x01;
-//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseB = 0x01;
-//        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = 0x01;
-//        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = 0x10;
-//        can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
-//
+    canCount++;
+    if (canCount > canMessageSendCounter){
+//        Sending the CAN message after every 1 seconds
+        sendMessageNow = 1;
+        canCount = 0;
+        Uint16 buffer = 0;
+
+        // Configuring transmission for sequence number 1
+        can_message_seq1_phvolt.phase_seq.Seq_number        = 0x01;
+        buffer = (Uint16) (rmsvalues.grid_voltage_R*10.0f);
+        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseA = buffer>>8;
+        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseA = buffer&(0x00ff);
+        buffer = (Uint16) (rmsvalues.grid_voltage_B*10.0f);
+        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseB = buffer>>8;
+        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseB = buffer&(0x00ff);
+        buffer = (Uint16) (rmsvalues.grid_voltage_Y*10.0f);
+        can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = buffer>>8;
+        can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
+        can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
+
 //        CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
-//
-////        Configuring for the transmission of the sequence number 2
-//        // Configuring transmission for sequence number 2 in correct order
-//        can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
-//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseA = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseB = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseB = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = 0x01;
-//        can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
-//
+
+//        Configuring for the transmission of the sequence number 2
+        // Configuring transmission for sequence number 2 in correct order
+        can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
+        buffer = (Uint16) (rmsvalues.grid_curr_R*10.0f);
+        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = buffer>>8;
+        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseA = buffer&(0x00ff);
+        buffer = (Uint16) (rmsvalues.grid_curr_B*10.0f);
+        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseB = buffer>>8;
+        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseB = buffer&(0x00ff);
+        buffer = (Uint16) (rmsvalues.grid_curr_Y*10.0f);
+        can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = buffer>>8;
+        can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
+        can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
+
 //        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
-//
-////        Configuring for the transmission using the sequence number 3
-//        // Configuring transmission for sequence number 3 in correct order
-//        can_message_seq3_info.phase_seq.Seq_number           = 0x03;
-//        can_message_seq3_info.phase_seq.Upper_Byte_RCMU      = 0x01;
-//        can_message_seq3_info.phase_seq.Lower_Byte_RCMU      = 0x01;
-//        can_message_seq3_info.phase_seq.Upper_Byte_NEvoltage = 0x01;
-//        can_message_seq3_info.phase_seq.Lower_Byte_NEvoltage = 0x01;
-//        can_message_seq3_info.phase_seq.Cp_state             = 0x01;
-//        can_message_seq3_info.phase_seq.DutyCycle            = 0x01;
-//        can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
-//
+
+//        Configuring for the transmission using the sequence number 3
+        // Configuring transmission for sequence number 3 in correct order
+        can_message_seq3_info.phase_seq.Seq_number           = 0x03;
+        buffer = (Uint16) (rmsvalues.residual_curr*10000.0f);           //Ten multiplier by default and multiplying by 1000 to convert to milliamperes
+        can_message_seq3_info.phase_seq.Byte_RCMU            = buffer&(0x00ff);
+        buffer = (Uint16) (rmsvalues.prot_earth*10.0f);
+        can_message_seq3_info.phase_seq.Byte_NEvoltage       = buffer&(0x00ff);
+        can_message_seq3_info.phase_seq.Cp_state             = EVSEstate&(0x00ff);
+        buffer = (Uint16) (dutyCycle*100.0f);
+        can_message_seq3_info.phase_seq.DutyCycle            = buffer&(0x00ff);
+        can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
+
 //        CAN_sendMessage(CANA_BASE, 3, 8, can_message_seq3_info.can_seq);
-//
-//    }
+
+    }
 
 //    ---Acknowledgement of the interrupt----
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;         // Must acknowledge the PIE group
@@ -1383,6 +1444,16 @@ interrupt void SCIB_TX_ISR(void)
 //
 interrupt void CANA0_ISR(void)
 {
+//    All these thing we are doing to make sure that the ADCA ISR dont get interrupted in between
+    Uint16 tempPIEIER = PieCtrlRegs.PIEIER9.all;            // Storing the interrupt configuration inside a temporary variable
+    IER |= 0x0001;                                          // Enabling the group 1 interrupts
+    IER &= 0x0001;                                          // Disabling all other interrupts 4
+    PieCtrlRegs.PIEACK.all = 0xffff;                        // All the interrupts are acknowledged
+    asm("       NOP");                                      // Waiting for a sysclock cycle
+    EINT;
+
+//    When entering the ADC ISR we have all the interrupts automatically disabled
+
     static Uint16 objectID = 0;
     objectID = CAN_getInterruptCause(CANA_BASE);
 
@@ -1418,6 +1489,9 @@ interrupt void CANA0_ISR(void)
         }
     }
 
+//    Restoring to previous configuration of the interrupts
+    DINT;
+    PieCtrlRegs.PIEIER9.all = tempPIEIER;
     CAN_clearGlobalInterruptStatus(CANA_BASE, CAN_GLOBAL_INT_CANINT0);
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP9;
 }

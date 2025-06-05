@@ -35,7 +35,7 @@ SENSEDVALUES multipliers = {
      .grid_curr_R = 110.57f,
      .grid_curr_Y = 110.57f,
      .grid_curr_B = 110.57f,
-     .prot_earth = 44.636f,
+     .prot_earth = 30.06f,
      .residual_curr = 0.3676f,
      .temp_sens = 0.0f,
      .vbatt = 25.0f
@@ -86,7 +86,8 @@ SENSEDVALUES rmsvalues = {
 
 Uint32 count = 0;
 Uint32 canCount = 0;
-Uint16 samples = samplingFreq/signalFreq;
+Uint16 rmsSamples = samplingFreq/signalFreq;
+Uint16 epwmSamples = samplingFreq/pwmfreq;
 Uint16 Pwmstatus = OFF;
 unsigned char transmit[8];
 uint16_t CANTxData[8];
@@ -102,8 +103,15 @@ float beta = 3977.0f;
 offsetstatemachine currstate = oneseconddelaymode;
 Uint32 transition_counter = 0;
 float sample_time = 0.000005;
-float EvStateVolt = 0.0f;
+float EvStateAvgVolt = 0.0f;
 float cpSignalBuffer = 0.0f;
+float voltWaveForm[samplingFreq/signalFreq];
+float currWaveForm[samplingFreq/signalFreq];
+float dutyCycle = 0.0f;
+float inputCurrent = 0.0f;
+float epwmState = 0.0f;
+Uint16 sendMessageNow = 0;
+states EVSEstate = CP_STATE_A;
 
 void main(void)
 {
@@ -187,7 +195,14 @@ void main(void)
     EDIS;
     turnMainRelayOff;
     while (true){
-        counter++;
+        if (sendMessageNow == 1){
+            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq);
+            DELAY_US(consecutiveMsgDelay);
+            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq2_phcurr.can_seq);
+            DELAY_US(consecutiveMsgDelay);
+            CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq3_info.can_seq);
+            sendMessageNow = 0;
+        }
     }
 
 }  //end of main
