@@ -401,7 +401,8 @@ static inline void current2DutyCycle(void){
 }
 
 static inline void getCurrentState(){
-    epwmState = ((1/dutyCycle)*(((EvStateAvgVolt - 1.451629f)/(0.1202346f)) + (12.0f * (1 - dutyCycle))));
+
+//    epwmState = ((1/dutyCycle)*(((EvStateAvgVolt - 1.451612903f)/(0.1202346f)) + (11.96f * (1 - dutyCycle))));
 
     if (epwmState >= 10.0f){
         EVSEstate = CP_STATE_A;
@@ -438,20 +439,6 @@ static inline void UtilsEVstate(){
 //
 
 interrupt void ADCA1_ISR(void){
-//    Start Charging
-    if ((EVSE_Ready_To_Charge==2) && (EVSEstate==CP_STATE_B)){  //Implementing when the evse is ready to charge and command is released from the mcu
-        current2DutyCycle();    //Updating the duty cycle based on the current
-        turnMainRelayOn;
-    }
-
-    if ((EVSE_Ready_To_Charge==1) && ((EVSEstate==CP_STATE_B)||(EVSEstate==CP_STATE_C)) ){  //Implementing when the evse is ready to charge and command is released from the mcu
-        dutyCycle = 1.0f;       //Changing the duty cycle to 100%
-        turnMainRelayOff;
-    }
-
-    if ((EVSE_Ready_To_Charge==1) && (EVSEstate==CP_STATE_A) ){  //Implementing when the evse is ready to charge and command is released from the mcu
-        dutyCycle = 0.0f;       //Changing the duty cycle to 0%
-    }
 
 //    Setting the epwm duty cycle
     Uint16 cmpaval = dutyCycle*(float)TBPRDEPWM1;
@@ -490,6 +477,7 @@ interrupt void ADCA1_ISR(void){
         }
 
         case offsetcalcmode: {
+            turnMainRelayOff;
             transition_counter++;
             sum_values.grid_curr_B += sensedAnalogADC.grid_curr_B;
             sum_values.grid_curr_R += sensedAnalogADC.grid_curr_R;
@@ -531,6 +519,7 @@ interrupt void ADCA1_ISR(void){
             actualsensedvalues.grid_voltage_Y = (sensedAnalogADC.grid_voltage_Y-AvgOffsets.grid_voltage_Y)*multipliers.grid_voltage_Y;
             actualsensedvalues.prot_earth = (sensedAnalogADC.prot_earth-AvgOffsets.prot_earth)*multipliers.prot_earth;
             actualsensedvalues.residual_curr = (sensedAnalogADC.residual_curr-AvgOffsets.residual_curr)*multipliers.residual_curr;
+            actualsensedvalues.cp_signal = (sensedAnalogADC.cp_signal-AvgOffsets.cp_signal)/multipliers.cp_signal;
 
 //            For few we need to find the RMS values
             sum_values.grid_curr_B += (actualsensedvalues.grid_curr_B*actualsensedvalues.grid_curr_B);
@@ -546,14 +535,13 @@ interrupt void ADCA1_ISR(void){
             sum_values.actualTemp += (sensedAnalogADC.actualTemp);
             sum_values.vbatt += (actualsensedvalues.vbatt);
 
-//            Adding the cp signal in the buffer for the storage
-            cpSignalBuffer += (sensedAnalogADC.cp_signal);
-
-//            For processing the cp signal buffer
-            if (transition_counter%20 == 0){
-                UtilsEVstate();                 // Using this function the value of the EvStateAvgVoltage will be updated
-                getCurrentState();              // Finding the state of the EV
-            }
+//            cpSignalBuffer += (sensedAnalogADC.cp_signal);
+//
+////            For processing the cp signal buffer
+//            if (transition_counter%20 == 0){
+//                UtilsEVstate();                 // Using this function the value of the EvStateAvgVoltage will be updated
+//                getCurrentState();              // Finding the state of the EV
+//            }
 
 //            Finding the RMS after fetching 400 samples
             if (transition_counter >= 400){
@@ -561,9 +549,6 @@ interrupt void ADCA1_ISR(void){
                 UtilsRMS();
             }
 
-//            For the testing purposes only
-//            voltWaveForm[transition_counter] = actualsensedvalues.grid_voltage_B;
-//            currWaveForm[transition_counter] = actualsensedvalues.grid_curr_B;
             break;
         }
     }
@@ -591,7 +576,7 @@ interrupt void ADCA1_ISR(void){
 //        CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
 
 //        Configuring for the transmission of the sequence number 2
-        // Configuring transmission for sequence number 2 in correct order
+
         can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
         buffer = (Uint16) (rmsvalues.grid_curr_R*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = buffer>>8;
@@ -607,7 +592,7 @@ interrupt void ADCA1_ISR(void){
 //        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
 
 //        Configuring for the transmission using the sequence number 3
-        // Configuring transmission for sequence number 3 in correct order
+
         can_message_seq3_info.phase_seq.Seq_number           = 0x03;
         buffer = (Uint16) (rmsvalues.residual_curr*10000.0f);           //Ten multiplier by default and multiplying by 1000 to convert to milliamperes
         can_message_seq3_info.phase_seq.Byte_RCMU            = buffer&(0x00ff);
@@ -727,14 +712,14 @@ interrupt void SYS_ERR_ISR(void)
 //
 interrupt void TIMER0_ISR(void)
 {
-    CpuTimer0Regs.TCR.bit.TIF   =   1;      //Cleared the zero crossing flag
-    CpuTimer0Regs.TCR.bit.TRB   =   1;      //Reloading the timer
-    EALLOW;
-    GpioDataRegs.GPATOGGLE.bit.GPIO20 = 1;
-    GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
-    EDIS;
+//    CpuTimer0Regs.TCR.bit.TIF   =   1;      //Cleared the zero crossing flag
+//    CpuTimer0Regs.TCR.bit.TRB   =   1;      //Reloading the timer
+//    EALLOW;
+//    GpioDataRegs.GPATOGGLE.bit.GPIO20 = 1;
+//    GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
+//    EDIS;
 //    Code for the timer interrupt to be addressed in the isr.
-    InitCpuTimer(seconds);
+//    InitCpuTimer(seconds);
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
@@ -1469,32 +1454,30 @@ interrupt void CANA0_ISR(void)
 
     static Uint16 objectID = 0;
     objectID = CAN_getInterruptCause(CANA_BASE);
+    CAN_readMessage(CANA_BASE, 5, getdata.rsgMsgObjSeq2);
+    CAN_clearInterruptStatus(CANA_BASE, objectID);
 
 //    ################FOR THE TESTING OF THE THREE SEQUENCES#####################
-    while (objectID != 0){
-        if (objectID == 4){
-                CAN_readMessage(CANA_BASE, 4, getdata.rsgMsgObjSeq1);
-            }
-
-        if (objectID == 5){
-                CAN_readMessage(CANA_BASE, 5, getdata.rsgMsgObjSeq2);
-            }
-
-        if (objectID == 6){
-                CAN_readMessage(CANA_BASE, 6, getdata.rsgMsgObjSeq3);
-            }
-        CAN_clearInterruptStatus(CANA_BASE, objectID);  //for removing only the cause of only that interrupt that is currently under processing
-        objectID = CAN_getInterruptCause(CANA_BASE);
-    }
+//    while (objectID != 0){
+//        if (objectID == 4){
+//                CAN_readMessage(CANA_BASE, 4, getdata.rsgMsgObjSeq1);
+//            }
+//
+//        if (objectID == 5){
+//                CAN_readMessage(CANA_BASE, 5, getdata.rsgMsgObjSeq2);
+//            }
+//
+//        if (objectID == 6){
+//                CAN_readMessage(CANA_BASE, 6, getdata.rsgMsgObjSeq3);
+//            }
+//        CAN_clearInterruptStatus(CANA_BASE, objectID);  //for removing only the cause of only that interrupt that is currently under processing
+//        objectID = CAN_getInterruptCause(CANA_BASE);
+//    }
 
 //    Now the actual data has got stored in the getdata.rsgMsgObjSeq2
     SeqNumberReceived = getdata.rsgMsgObjSeq2[0];
     EVSE_Ready_To_Charge = getdata.rsgMsgObjSeq2[1];
     inputCurrent = (float)getdata.rsgMsgObjSeq2[2];
-
-    if (EVSE_Ready_To_Charge == 2){
-        dutyCycle = 1.0f;
-    }
 
 //    Restoring to previous configuration of the interrupts
     DINT;

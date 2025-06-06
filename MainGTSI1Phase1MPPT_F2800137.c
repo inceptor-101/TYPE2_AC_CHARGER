@@ -31,7 +31,7 @@ SENSEDVALUES multipliers = {
      .grid_voltage_R = 296.9697f,
      .grid_voltage_Y = 296.9697f,
      .grid_voltage_B = 296.9697f,
-     .cp_signal = 0.12023f,
+     .cp_signal = 0.1202346f,
      .grid_curr_R = 110.57f,
      .grid_curr_Y = 110.57f,
      .grid_curr_B = 110.57f,
@@ -46,7 +46,7 @@ SENSEDVALUES AvgOffsets = {
      .grid_voltage_R = 0.0f,
      .grid_voltage_Y = 0.0f,
      .grid_voltage_B = 0.0f,
-     .cp_signal = 0.0f,
+     .cp_signal = 1.451612903f,
      .grid_curr_R = 0.0f,
      .grid_curr_Y = 0.0f,
      .grid_curr_B = 0.0f,
@@ -117,6 +117,10 @@ Uint16 canBufferSeq2[4];
 Uint16 canBufferSeq3[4];
 Uint16 EVSE_Ready_To_Charge = 0;
 Uint16 SeqNumberReceived;
+Uint16 counter2=0;
+Uint16 counter3=0;
+Uint16 epwmCounter=0;
+Uint16 lowepwmCounter=0;
 void main(void)
 {
 
@@ -190,7 +194,7 @@ void main(void)
 //    ------------------------------------------------------------------
 //    ---------------CAN CODE WAS AFTER  THAT---------------------------
 //    -------------------------------------------------------------------
-    InitCpuTimer(seconds);
+//    InitCpuTimer(seconds);
 //    GpioDataRegs.GPADAT.bit.GPIO20 = 1; // Uncomment to turn LED OFF
 //    GpioDataRegs.GPADAT.bit.GPIO22 = 0;
 
