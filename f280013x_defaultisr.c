@@ -400,45 +400,151 @@ static inline void current2DutyCycle(void){
     }
 }
 
-static inline void getCurrentState(){
-
-//    epwmState = ((1/dutyCycle)*(((EvStateAvgVolt - 1.451612903f)/(0.1202346f)) + (11.96f * (1 - dutyCycle))));
-
-    if (epwmState >= 10.0f){
-        EVSEstate = CP_STATE_A;
+static inline void stateBufferUpdate(void){
+//    For the state A
+    if (actualsensedvalues.cp_signal > 10.0f){
+        highStateRecord.greaterThan10_A++;
+        if (highStateRecord.greaterThan10_A>pair.maxCount){
+            pair.maxState = CP_STATE_A;
+            pair.maxCount = highStateRecord.greaterThan10_A;
+        }
         return;
     }
-    else if (epwmState >= 7.0f){
-        EVSEstate = CP_STATE_B;
+//    For the state B
+    if (actualsensedvalues.cp_signal > 7.0f){
+        highStateRecord.greaterThan7_B++;
+        if (highStateRecord.greaterThan7_B>pair.maxCount){
+            pair.maxState = CP_STATE_B;
+            pair.maxCount = highStateRecord.greaterThan7_B;
+        }
         return;
     }
-    else if (epwmState >= 4.0f){
-        EVSEstate = CP_STATE_C;
+//    For the state C
+    if (actualsensedvalues.cp_signal > 4.0f){
+        highStateRecord.greaterThan4_C++;
+        if (highStateRecord.greaterThan4_C>pair.maxCount){
+            pair.maxState = CP_STATE_C;
+            pair.maxCount = highStateRecord.greaterThan4_C;
+        }
         return;
     }
-    else if (epwmState >= 1.0f){
-        EVSEstate = CP_STATE_D;
+//    For the state D
+    if (actualsensedvalues.cp_signal > 1.0f){
+        highStateRecord.greaterThan1_D++;
+        if (highStateRecord.greaterThan1_D>pair.maxCount){
+            pair.maxState = CP_STATE_D;
+            pair.maxCount = highStateRecord.greaterThan1_D;
+        }
         return;
     }
-    else if (epwmState >= -2.0f){
-        EVSEstate = CP_STATE_E;
+//    For the state E
+    if (actualsensedvalues.cp_signal > -2.0f){
+        highStateRecord.greaterThan_2_E++;
+        if (highStateRecord.greaterThan_2_E>pair.maxCount){
+            pair.maxState = CP_STATE_E;
+            pair.maxCount = highStateRecord.greaterThan_2_E;
+        }
         return;
     }
-    else{
-        EVSEstate = CP_STATE_F;
-        return;
-    }
-}
-
-static inline void UtilsEVstate(){
-    EvStateAvgVolt = cpSignalBuffer/(20.0f);
-    cpSignalBuffer = 0.0f;
 }
 
 // 1.1 - ADCA Interrupt 1
 //
 
 interrupt void ADCA1_ISR(void){
+
+//    Starting of the switch case statements
+    switch (EVSE_State_Detect){
+        case CP_STATE_A:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 0.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+            }
+            break;
+        }
+        case CP_STATE_B:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOn;
+                    current2DutyCycle();
+                    break;
+                }
+            }
+            break;
+        }
+        case CP_STATE_C:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOn;
+                    current2DutyCycle();
+                    break;
+                }
+            }
+            break;
+        }
+        case CP_STATE_D:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOn;
+                    current2DutyCycle();
+                    break;
+                }
+            }
+            break;
+        }
+        case CP_STATE_E:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 0.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+            }
+        }
+        case CP_STATE_F:{
+            switch (EVSE_Ready_To_Charge){
+                case NotReady2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 0.0f;
+                    break;
+                }
+                case Ready2Charge:{
+                    turnMainRelayOff;
+                    dutyCycle = 1.0f;
+                    break;
+                }
+            }
+        }
+    }
+//    Ending of the switch case statements
 
 //    Setting the epwm duty cycle
     Uint16 cmpaval = dutyCycle*(float)TBPRDEPWM1;
@@ -535,13 +641,30 @@ interrupt void ADCA1_ISR(void){
             sum_values.actualTemp += (sensedAnalogADC.actualTemp);
             sum_values.vbatt += (actualsensedvalues.vbatt);
 
-//            cpSignalBuffer += (sensedAnalogADC.cp_signal);
-//
-////            For processing the cp signal buffer
-//            if (transition_counter%20 == 0){
-//                UtilsEVstate();                 // Using this function the value of the EvStateAvgVoltage will be updated
-//                getCurrentState();              // Finding the state of the EV
-//            }
+//            From here onwards I am trying to find the state of the epwm at the current point
+            if (actualsensedvalues.cp_signal > -3.0f){
+                highStateDetect = 1;
+                epwmHighStateCounter++;
+                stateBufferUpdate();
+                if (epwmHighStateCounter>=100){
+                    epwmHighStateCounter=0;
+                    EVSE_State_Detect = pair.maxState;
+                    //Resetting the used variables
+                    pair.maxState = CP_STATE_A;
+                    pair.maxCount = 0;
+                    memset(&highStateRecord, 0, sizeof(highStateRecord));
+                }
+            }
+
+//            Logic for the logic low state detection and update of the state accordingly
+            if (actualsensedvalues.cp_signal <= -3.0f){
+                highStateDetect = 0;
+                epwmLowStateCounter++;
+                if (epwmLowStateCounter>=100){
+                    epwmLowStateCounter=0;
+                    EVSE_State_Detect = CP_STATE_F;
+                }
+            }
 
 //            Finding the RMS after fetching 400 samples
             if (transition_counter >= 400){
@@ -598,7 +721,7 @@ interrupt void ADCA1_ISR(void){
         can_message_seq3_info.phase_seq.Byte_RCMU            = buffer&(0x00ff);
         buffer = (Uint16) (rmsvalues.prot_earth*10.0f);
         can_message_seq3_info.phase_seq.Byte_NEvoltage       = buffer&(0x00ff);
-        can_message_seq3_info.phase_seq.Cp_state             = EVSEstate&(0x00ff);
+        can_message_seq3_info.phase_seq.Cp_state             = EVSE_State_Detect&(0x00ff);
         buffer = (Uint16) (dutyCycle*100.0f);
         can_message_seq3_info.phase_seq.DutyCycle            = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.ConnectorState       = 0x01;

@@ -84,6 +84,20 @@ SENSEDVALUES rmsvalues = {
      .vbatt = 0.0f
 };
 
+//For the state detection logic
+HIGHSTATERECORDER highStateRecord = {
+     .greaterThan10_A = 0,
+     .greaterThan7_B = 0,
+     .greaterThan4_C = 0,
+     .greaterThan1_D = 0,
+     .greaterThan_2_E = 0
+};
+
+PAIR pair = {
+     .maxCount = 0,
+     .maxState = CP_STATE_A,
+};
+
 Uint32 count = 0;
 Uint32 canCount = 0;
 Uint16 rmsSamples = samplingFreq/signalFreq;
@@ -95,7 +109,6 @@ uint16_t CANRxData[8];
 RXDATA getdata;
 Uint16 EvseState = OFF;
 Uint16 special = 0;
-Uint16 seconds = 5;
 Uint32 counter = 0;
 volatile float tempSensRes = 0.0f;
 volatile float actualTemp = 0.0f;
@@ -105,22 +118,26 @@ Uint32 transition_counter = 0;
 float sample_time = 0.000005;
 float EvStateAvgVolt = 0.0f;
 float cpSignalBuffer = 0.0f;
+
+//For the testing only
 float voltWaveForm[samplingFreq/signalFreq];
 float currWaveForm[samplingFreq/signalFreq];
+
 float dutyCycle = 0.0f;
 float inputCurrent = 0.0f;
 float epwmState = 0.0f;
 Uint16 sendMessageNow = 0;
-states EVSEstate = CP_STATE_A;
+states EVSE_State_Detect = CP_STATE_F;
 Uint16 canBufferSeq1[4];
 Uint16 canBufferSeq2[4];
 Uint16 canBufferSeq3[4];
 Uint16 EVSE_Ready_To_Charge = 0;
 Uint16 SeqNumberReceived;
-Uint16 counter2=0;
-Uint16 counter3=0;
-Uint16 epwmCounter=0;
-Uint16 lowepwmCounter=0;
+Uint16 highStateDetect = 0;
+Uint16 epwmHighStateCounter = 0;
+Uint16 epwmLowStateCounter = 0;
+
+//For the state detection logic
 void main(void)
 {
 

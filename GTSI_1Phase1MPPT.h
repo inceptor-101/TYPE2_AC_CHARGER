@@ -99,7 +99,6 @@ extern Uint16 secureRamFuncs_loadstart;
 extern Uint16 secureRamFuncs_loadsize;
 extern Uint16 secureRamFuncs_runstart;
 extern Uint16 Cla1Prog_Start;
-extern Uint16 special;
 extern volatile float tempSensRes;
 extern volatile float actualTemp;
 extern float beta;
@@ -226,6 +225,15 @@ extern float EvStateAvgVolt;
 extern float cpSignalBuffer;
 
 //#########################DEFINING THE STRUCTURES FOR THE TYPE TWO AC CHARGER#####################################
+typedef enum {
+    CP_STATE_A = 0,  // No vehicle connected (12V)
+    CP_STATE_B,      // Vehicle connected but not requesting charging (9V)
+    CP_STATE_C,      // Vehicle connected and requesting charging (6V)
+    CP_STATE_D,      // Vehicle connected, charging with ventilation required (3V)
+    CP_STATE_E,      // Error: short to ground or voltage < 3V
+    CP_STATE_F       // Error: CP shorted to +12V
+}states;
+
 typedef struct {
     float grid_voltage_R;
     float grid_voltage_Y;
@@ -241,6 +249,19 @@ typedef struct {
     float actualTemp;
 } SENSEDVALUES;
 
+typedef struct{
+    Uint16 greaterThan10_A;
+    Uint16 greaterThan7_B;
+    Uint16 greaterThan4_C;
+    Uint16 greaterThan1_D;
+    Uint16 greaterThan_2_E;
+}HIGHSTATERECORDER;
+
+typedef struct{
+    Uint16 maxCount;
+    states maxState;
+}PAIR;
+
 typedef enum{
     gridvoltage,
     protearth,
@@ -250,15 +271,6 @@ typedef enum{
     cpsignal,
     tempsens
 }sensedparams;
-
-typedef enum {
-    CP_STATE_A = 0,  // No vehicle connected (12V)
-    CP_STATE_B,      // Vehicle connected but not requesting charging (9V)
-    CP_STATE_C,      // Vehicle connected and requesting charging (6V)
-    CP_STATE_D,      // Vehicle connected, charging with ventilation required (3V)
-    CP_STATE_E,      // Error: short to ground or voltage < 3V
-    CP_STATE_F       // Error: CP shorted to +12V
-}states;
 
 typedef struct{
     uint16_t Seq_number;
@@ -279,7 +291,6 @@ typedef struct{
     uint16_t DutyCycle;
     uint16_t ConnectorState;
     uint32_t Reserved;
-
 }CAN_SEQ3;
 
 typedef struct{
@@ -315,8 +326,13 @@ extern CANSEQUNION3 can_message_seq3_info;
 extern RXDATA getdata;
 extern SENSEDVALUES sum_values;
 extern SENSEDVALUES rmsvalues;
+extern HIGHSTATERECORDER highStateRecord;
+extern PAIR pair;
 extern Uint16 EvseState;
 extern Uint16 sendMessageNow;
+extern Uint16 highStateDetect;
+extern Uint16 epwmHighStateCounter;
+extern Uint16 epwmLowStateCounter;
 
 //VARIABLES
 extern Uint32 count;
@@ -325,7 +341,7 @@ extern unsigned char transmit[8];
 extern Uint32 canCount;
 extern volatile Uint16* resultADCA;
 extern volatile Uint16* resultADCC;
-extern states EVSEstate;
+extern states EVSE_State_Detect;
 
 //###############################END OF THE VARIABLES###############################
 
@@ -533,6 +549,11 @@ typedef enum {
     FixedPowerFactor
 } InverterModes;
 
+enum {
+    NotReady2Charge = 1,
+    Ready2Charge = 2
+};
+
 // Added for testing
 //#define ADCPeriodTestON  GpioDataRegs.GPASET.bit.GPIO23
 //#define ADCPeriodTestOFF GpioDataRegs.GPACLEAR.bit.GPIO23
@@ -577,7 +598,7 @@ extern Uint16 canBufferSeq2[4];
 extern Uint16 canBufferSeq3[4];
 extern Uint16 EVSE_Ready_To_Charge;
 extern Uint16 SeqNumberReceived;
-extern states EVSEstate;
+extern states EVSE_State_Detect;
 
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.
