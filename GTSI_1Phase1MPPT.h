@@ -325,7 +325,7 @@ extern CANSEQUNION can_message_seq2_phcurr;
 extern CANSEQUNION3 can_message_seq3_info;
 extern RXDATA getdata;
 extern SENSEDVALUES sum_values;
-extern SENSEDVALUES rmsvalues;
+extern SENSEDVALUES rms&avg_values;
 extern HIGHSTATERECORDER highStateRecord;
 extern PAIR pair;
 extern Uint16 EvseState;

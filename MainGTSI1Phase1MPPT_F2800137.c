@@ -70,7 +70,7 @@ SENSEDVALUES sum_values = {
      .vbatt = 0.0f
 };
 
-SENSEDVALUES rmsvalues = {
+SENSEDVALUES rms&avg_values = {
      .grid_voltage_R = 0.0f,
      .grid_voltage_Y = 0.0f,
      .grid_voltage_B = 0.0f,
@@ -131,7 +131,7 @@ states EVSE_State_Detect = CP_STATE_F;
 Uint16 canBufferSeq1[4];
 Uint16 canBufferSeq2[4];
 Uint16 canBufferSeq3[4];
-Uint16 EVSE_Ready_To_Charge = 0;
+Uint16 EVSE_Ready_To_Charge = 1;
 Uint16 SeqNumberReceived;
 Uint16 highStateDetect = 0;
 Uint16 epwmHighStateCounter = 0;
