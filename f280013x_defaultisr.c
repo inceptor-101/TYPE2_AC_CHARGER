@@ -665,6 +665,9 @@ interrupt void ADCA1_ISR(void){
                     EVSE_State_Detect = CP_STATE_F;
                 }
             }
+            else{
+                epwmLowStateCounter=0;
+            }
 
 //            Finding the RMS after fetching 400 samples
             if (transition_counter >= 400){
