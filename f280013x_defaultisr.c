@@ -371,18 +371,18 @@ interrupt void USER12_ISR(void)
 
 static inline void UtilsRMS(void){
 //    For the RMS values calculations
-    rms&values.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)rmsSamples);
-    rms&avg_values.grid_curr_R = sqrtf(sum_values.grid_curr_R/(float)rmsSamples);
-    rms&avg_values.grid_curr_Y = sqrtf(sum_values.grid_curr_Y/(float)rmsSamples);
-    rms&avg_values.grid_voltage_B = sqrtf(sum_values.grid_voltage_B/(float)rmsSamples);
-    rms&avg_values.grid_voltage_R = sqrtf(sum_values.grid_voltage_R/(float)rmsSamples);
-    rms&avg_values.grid_voltage_Y = sqrtf(sum_values.grid_voltage_Y/(float)rmsSamples);
-    rms&avg_values.prot_earth = sqrtf(sum_values.prot_earth/(float)rmsSamples);
-    rms&avg_values.residual_curr = sqrtf(sum_values.residual_curr/(float)rmsSamples);
+    rmsvalues.grid_curr_B = sqrtf(sum_values.grid_curr_B/(float)rmsSamples);
+    rmsvalues.grid_curr_R = sqrtf(sum_values.grid_curr_R/(float)rmsSamples);
+    rmsvalues.grid_curr_Y = sqrtf(sum_values.grid_curr_Y/(float)rmsSamples);
+    rmsvalues.grid_voltage_B = sqrtf(sum_values.grid_voltage_B/(float)rmsSamples);
+    rmsvalues.grid_voltage_R = sqrtf(sum_values.grid_voltage_R/(float)rmsSamples);
+    rmsvalues.grid_voltage_Y = sqrtf(sum_values.grid_voltage_Y/(float)rmsSamples);
+    rmsvalues.prot_earth = sqrtf(sum_values.prot_earth/(float)rmsSamples);
+    rmsvalues.residual_curr = sqrtf(sum_values.residual_curr/(float)rmsSamples);
 
 //    For the average values calculations
-    rms&avg_values.actualTemp = sum_values.actualTemp/(float)rmsSamples;
-    rms&avg_values.vbatt = sum_values.vbatt/(float)rmsSamples;
+    rmsvalues.actualTemp = sum_values.actualTemp/(float)rmsSamples;
+    rmsvalues.vbatt = sum_values.vbatt/(float)rmsSamples;
 
 //    Resetting the sum structure
     memset(&sum_values, 0, sizeof(sum_values));
@@ -528,7 +528,6 @@ interrupt void ADCA1_ISR(void){
                     break;
                 }
             }
-            break;
         }
         case CP_STATE_F:{
             switch (EVSE_Ready_To_Charge){
@@ -543,7 +542,6 @@ interrupt void ADCA1_ISR(void){
                     break;
                 }
             }
-            break;
         }
     }
 //    Ending of the switch case statements
@@ -665,11 +663,10 @@ interrupt void ADCA1_ISR(void){
                 if (epwmLowStateCounter>=100){
                     epwmLowStateCounter=0;
                     EVSE_State_Detect = CP_STATE_F;
-                    epwmHighStateCounter = 0;
                 }
             }
             else{
-                epwmLowStateCounter = 0;
+                epwmLowStateCounter=0;
             }
 
 //            Finding the RMS after fetching 400 samples
@@ -691,13 +688,13 @@ interrupt void ADCA1_ISR(void){
 
         // Configuring transmission for sequence number 1
         can_message_seq1_phvolt.phase_seq.Seq_number        = 0x01;
-        buffer = (Uint16) (rms&avg_values.grid_voltage_R*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_voltage_R*10.0f);
         can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseA = buffer>>8;
         can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseA = buffer&(0x00ff);
-        buffer = (Uint16) (rms&avg_values.grid_voltage_B*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_voltage_B*10.0f);
         can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseB = buffer>>8;
         can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseB = buffer&(0x00ff);
-        buffer = (Uint16) (rms&avg_values.grid_voltage_Y*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_voltage_Y*10.0f);
         can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = buffer>>8;
         can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
         can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
@@ -707,13 +704,13 @@ interrupt void ADCA1_ISR(void){
 //        Configuring for the transmission of the sequence number 2
 
         can_message_seq2_phcurr.phase_seq.Seq_number        = 0x02;
-        buffer = (Uint16) (rms&avg_values.grid_curr_R*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_curr_R*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseA = buffer>>8;
         can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseA = buffer&(0x00ff);
-        buffer = (Uint16) (rms&avg_values.grid_curr_B*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_curr_B*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseB = buffer>>8;
         can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseB = buffer&(0x00ff);
-        buffer = (Uint16) (rms&avg_values.grid_curr_Y*10.0f);
+        buffer = (Uint16) (rmsvalues.grid_curr_Y*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = buffer>>8;
         can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
         can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
@@ -723,9 +720,9 @@ interrupt void ADCA1_ISR(void){
 //        Configuring for the transmission using the sequence number 3
 
         can_message_seq3_info.phase_seq.Seq_number           = 0x03;
-        buffer = (Uint16) (rms&avg_values.residual_curr*10000.0f);           //Ten multiplier by default and multiplying by 1000 to convert to milliamperes
+        buffer = (Uint16) (rmsvalues.residual_curr*10000.0f);           //Ten multiplier by default and multiplying by 1000 to convert to milliamperes
         can_message_seq3_info.phase_seq.Byte_RCMU            = buffer&(0x00ff);
-        buffer = (Uint16) (rms&avg_values.prot_earth*10.0f);
+        buffer = (Uint16) (rmsvalues.prot_earth*10.0f);
         can_message_seq3_info.phase_seq.Byte_NEvoltage       = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.Cp_state             = EVSE_State_Detect&(0x00ff);
         buffer = (Uint16) (dutyCycle*100.0f);
