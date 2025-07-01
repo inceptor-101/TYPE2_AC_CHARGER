@@ -124,18 +124,19 @@ float voltWaveForm[samplingFreq/signalFreq];
 float currWaveForm[samplingFreq/signalFreq];
 
 float dutyCycle = 0.0f;
-float inputCurrent = 16.0f;
+float inputCurrent = 0.0f;
 float epwmState = 0.0f;
 Uint16 sendMessageNow = 0;
 states EVSE_State_Detect = CP_STATE_F;
 Uint16 canBufferSeq1[4];
 Uint16 canBufferSeq2[4];
 Uint16 canBufferSeq3[4];
-Uint16 EVSE_Ready_To_Charge = 2;
+Uint16 EVSE_Ready_To_Charge = 0;
 Uint16 SeqNumberReceived;
 Uint16 highStateDetect = 0;
 Uint16 epwmHighStateCounter = 0;
 Uint16 epwmLowStateCounter = 0;
+Uint16 stopCharging = 0;
 
 //For the state detection logic
 void main(void)
@@ -222,9 +223,9 @@ void main(void)
     while (true){
         if (sendMessageNow == 1){
             CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
-            DELAY_US(consecutiveMsgDelay);
+            Delay_ms(20);
             CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
-            DELAY_US(consecutiveMsgDelay);
+            Delay_ms(20);
             CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq3_info.can_seq);
             sendMessageNow = 0;
         }

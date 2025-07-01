@@ -21,7 +21,8 @@ void InitCanaChargerDriverLib(void)
     //CAN_enableTestMode(CANA_BASE, CAN_TEST_EXL);    // currently doing in the loopback mode only
 
 //    CONFIGURING THE MESSAGE OBJECTS FOR THE TRANSMISSION
-    CAN_setupMessageObject(CANA_BASE, 1, 0x21, CAN_MSG_FRAME_STD, CAN_MSG_OBJ_TYPE_TX, 0, CAN_MSG_OBJ_TX_INT_ENABLE, 8);
+//    CAN_setupMessageObject(CANA_BASE, 1, 0x21, CAN_MSG_FRAME_STD, CAN_MSG_OBJ_TYPE_TX, 0, CAN_MSG_OBJ_TX_INT_ENABLE, 8);
+    CAN_setupMessageObject(CANA_BASE, 1, 0x21, CAN_MSG_FRAME_STD, CAN_MSG_OBJ_TYPE_TX, 0, CAN_MSG_OBJ_NO_FLAGS, 8);
 
 //    FOR SAMPLE TESTING
     CAN_setupMessageObject(CANA_BASE, 5, 0x31, CAN_MSG_FRAME_STD, CAN_MSG_OBJ_TYPE_RX, 0, CAN_MSG_OBJ_RX_INT_ENABLE, 8);

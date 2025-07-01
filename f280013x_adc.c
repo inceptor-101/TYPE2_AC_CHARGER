@@ -160,7 +160,7 @@ void MyInitADC(void){
     AdcaRegs.ADCSOC3CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
     AdcaRegs.ADCSOC4CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A
-    AdcaRegs.ADCSOC4CTL.bit.CHSEL           = 12;    // Convert channel ADC A12:  B - phase current sensing
+    AdcaRegs.ADCSOC4CTL.bit.CHSEL           = 12;    // Convert channel ADC A12:  B - phase current sensingf
     AdcaRegs.ADCSOC4CTL.bit.ACQPS           = 0x0B;    // Acquisition window (12 SYSCLK Cycles) i.e., 100ns
 
     AdcaRegs.ADCSOC5CTL.bit.TRIGSEL         = 0x7;    // Trigger by ePWM2 SOC A

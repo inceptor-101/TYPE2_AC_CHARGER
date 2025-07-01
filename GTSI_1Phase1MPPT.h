@@ -333,6 +333,7 @@ extern Uint16 sendMessageNow;
 extern Uint16 highStateDetect;
 extern Uint16 epwmHighStateCounter;
 extern Uint16 epwmLowStateCounter;
+extern Uint16 stopCharging;
 
 //VARIABLES
 extern Uint32 count;

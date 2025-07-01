@@ -453,99 +453,103 @@ static inline void stateBufferUpdate(void){
 
 interrupt void ADCA1_ISR(void){
 
-//    Starting of the switch case statements
-    switch (EVSE_State_Detect){
-        case CP_STATE_A:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 0.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-            }
-            break;
-        }
-        case CP_STATE_B:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOn;
-                    current2DutyCycle();
-                    break;
-                }
-            }
-            break;
-        }
-        case CP_STATE_C:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOn;
-                    current2DutyCycle();
-                    break;
-                }
-            }
-            break;
-        }
-        case CP_STATE_D:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOn;
-                    current2DutyCycle();
-                    break;
-                }
-            }
-            break;
-        }
-        case CP_STATE_E:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 0.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-            }
-        }
-        case CP_STATE_F:{
-            switch (EVSE_Ready_To_Charge){
-                case NotReady2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 0.0f;
-                    break;
-                }
-                case Ready2Charge:{
-                    turnMainRelayOff;
-                    dutyCycle = 1.0f;
-                    break;
-                }
-            }
-        }
+    if (stopCharging == 1){
+        dutyCycle = 1.0f;
     }
-//    Ending of the switch case statements
-
+    else{
+        //    Starting of the switch case statements
+            switch (EVSE_State_Detect){
+                case CP_STATE_A:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 0.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case CP_STATE_B:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOn;
+                            current2DutyCycle();
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case CP_STATE_C:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOn;
+                            current2DutyCycle();
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case CP_STATE_D:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOn;
+                            current2DutyCycle();
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case CP_STATE_E:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 0.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                    }
+                }
+                case CP_STATE_F:{
+                    switch (EVSE_Ready_To_Charge){
+                        case NotReady2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 0.0f;
+                            break;
+                        }
+                        case Ready2Charge:{
+                            turnMainRelayOff;
+                            dutyCycle = 1.0f;
+                            break;
+                        }
+                    }
+                }
+            }
+        //    Ending of the switch case statements
+    }
 //    Setting the epwm duty cycle
     Uint16 cmpaval = dutyCycle*(float)TBPRDEPWM1;
     EPwm1Regs.CMPA.bit.CMPA = cmpaval;
@@ -679,11 +683,11 @@ interrupt void ADCA1_ISR(void){
         }
     }
 
-    canCount++;
-    if (canCount > canMessageSendCounter){
+        canCount++;
+    if (canCount >= canMessageSendCounter){
 //        Sending the CAN message after every 1 seconds
-        sendMessageNow = 1;
         canCount = 0;
+        sendMessageNow = 1;
         Uint16 buffer = 0;
 
         // Configuring transmission for sequence number 1
@@ -726,7 +730,8 @@ interrupt void ADCA1_ISR(void){
         can_message_seq3_info.phase_seq.Byte_NEvoltage       = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.Cp_state             = EVSE_State_Detect&(0x00ff);
         buffer = (Uint16) (dutyCycle*100.0f);
-        can_message_seq3_info.phase_seq.DutyCycle            = buffer&(0x00ff);
+        can_message_seq3_info.phase_seq.DutyCycle
+        = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
         can_message_seq3_info.phase_seq.Reserved             = 0xffffffff;
 
