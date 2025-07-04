@@ -393,6 +393,8 @@ extern float igSoftwareTripLimit;
 extern float ipvHardwareTripLimit;
 extern float ipvSoftwareTripLimit;
 extern Uint16 rmsSamples;
+extern Uint32 cameFromStateB_C;
+extern Uint32 cameFromStateB_C_cntr;
 
 extern void Delay_ms(Uint16);
 
@@ -600,7 +602,7 @@ extern Uint16 canBufferSeq3[4];
 extern Uint16 EVSE_Ready_To_Charge;
 extern Uint16 SeqNumberReceived;
 extern states EVSE_State_Detect;
-
+#define TEN_SECOND_COUNT 200000 //TWO LAKHS WITH RESPECT TO THE SAMPLING FREQUENCY OF 20kHz
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.
 #define GetAdcOffsetTrimOTP (Uint16 (*)(Uint16 OTPoffset))0x0703AC

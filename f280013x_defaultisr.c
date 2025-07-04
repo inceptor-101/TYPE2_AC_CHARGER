@@ -463,6 +463,13 @@ interrupt void ADCA1_ISR(void){
                     switch (EVSE_Ready_To_Charge){
                         case NotReady2Charge:{
                             turnMainRelayOff;
+                            if (((++cameFromStateB_C_cntr) <= TEN_SECOND_COUNT) && (cameFromStateB_C==1)){
+                                break;
+                            }
+                            else {
+                                cameFromStateB_C = 0;
+                                cameFromStateB_C_cntr = 0;
+                            }
                             dutyCycle = 0.0f;
                             break;
                         }
@@ -479,6 +486,7 @@ interrupt void ADCA1_ISR(void){
                         case NotReady2Charge:{
                             turnMainRelayOff;
                             dutyCycle = 1.0f;
+                            cameFromStateB_C=1;
                             break;
                         }
                         case Ready2Charge:{
@@ -494,6 +502,7 @@ interrupt void ADCA1_ISR(void){
                         case NotReady2Charge:{
                             turnMainRelayOff;
                             dutyCycle = 1.0f;
+                            cameFromStateB_C=1;
                             break;
                         }
                         case Ready2Charge:{

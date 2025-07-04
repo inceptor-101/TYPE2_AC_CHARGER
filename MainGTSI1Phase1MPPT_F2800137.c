@@ -137,6 +137,8 @@ Uint16 highStateDetect = 0;
 Uint16 epwmHighStateCounter = 0;
 Uint16 epwmLowStateCounter = 0;
 Uint16 stopCharging = 0;
+Uint32 cameFromStateB_C = 0;
+Uint32 cameFromStateB_C_cntr = 0;
 
 //For the state detection logic
 void main(void)
