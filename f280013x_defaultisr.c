@@ -681,9 +681,9 @@ interrupt void ADCA1_ISR(void){
             }
 
             //    sum of the powers
-            sum_inst_powers.inst_power_phase_B += (actualsensedvalues.grid_curr_B * actualsensedvalues.grid_voltage_B * (-1.0f));
-            sum_inst_powers.inst_power_phase_R += (actualsensedvalues.grid_curr_R * actualsensedvalues.grid_voltage_R * (-1.0f));
-            sum_inst_powers.inst_power_phase_Y += (actualsensedvalues.grid_curr_Y * actualsensedvalues.grid_voltage_Y * (-1.0f));
+            sum_inst_powers.inst_power_phase_B += (actualsensedvalues.grid_curr_B * actualsensedvalues.grid_voltage_B);
+            sum_inst_powers.inst_power_phase_R += (actualsensedvalues.grid_curr_R * actualsensedvalues.grid_voltage_R);
+            sum_inst_powers.inst_power_phase_Y += (actualsensedvalues.grid_curr_Y * actualsensedvalues.grid_voltage_Y);
 
             if ((++power_samples_cnt) >= POWER_SAMPLES_MAX_COUNT){
                 float sum_inst_powers_allphases = 0.0f;
