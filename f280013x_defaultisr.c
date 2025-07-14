@@ -455,6 +455,7 @@ interrupt void ADCA1_ISR(void){
 
     if (stopCharging == 1){
         dutyCycle = 1.0f;
+//        turnMainRelayOn;
     }
     else{
         //    Starting of the switch case statements
@@ -469,9 +470,9 @@ interrupt void ADCA1_ISR(void){
                             else {
                                 cameFromStateB_C = 0;
                                 cameFromStateB_C_cntr = 0;
+                                dutyCycle = 0.0f;
+                                break;
                             }
-                            dutyCycle = 0.0f;
-                            break;
                         }
                         case Ready2Charge:{
                             turnMainRelayOff;
@@ -490,9 +491,19 @@ interrupt void ADCA1_ISR(void){
                             break;
                         }
                         case Ready2Charge:{
-                            turnMainRelayOn;
-                            current2DutyCycle();
-                            break;
+                            switch (authorise){
+                                case NotAuthenticated:{
+                                    turnMainRelayOff;
+                                    dutyCycle = 1.0f;
+                                    cameFromStateB_C=1;
+                                    break;
+                                }
+                                case Authenticated:{
+                                    turnMainRelayOn;
+                                    current2DutyCycle();
+                                    break;
+                                }
+                            }
                         }
                     }
                     break;
@@ -506,9 +517,19 @@ interrupt void ADCA1_ISR(void){
                             break;
                         }
                         case Ready2Charge:{
-                            turnMainRelayOn;
-                            current2DutyCycle();
-                            break;
+                            switch (authorise){
+                                case NotAuthenticated:{
+                                    turnMainRelayOff;
+                                    dutyCycle = 1.0f;
+                                    cameFromStateB_C=1;
+                                    break;
+                                }
+                                case Authenticated:{
+                                    turnMainRelayOn;
+                                    current2DutyCycle();
+                                    break;
+                                }
+                            }
                         }
                     }
                     break;
@@ -541,6 +562,7 @@ interrupt void ADCA1_ISR(void){
                             break;
                         }
                     }
+                    break;
                 }
                 case CP_STATE_F:{
                     switch (EVSE_Ready_To_Charge){
@@ -555,6 +577,7 @@ interrupt void ADCA1_ISR(void){
                             break;
                         }
                     }
+                    break;
                 }
             }
         //    Ending of the switch case statements
@@ -565,17 +588,17 @@ interrupt void ADCA1_ISR(void){
 
 //    ---------------CODE FOR DETECTING THE SENSED VARIABLES AND GETTING ACTUAL VALUES USING THE OFFSET-----------------
 //    -----------------Storing all of the sensed parameters in their corresponding allocated variables------------------
-    sensedAnalogADC.grid_voltage_R = (AdccResultRegs.ADCRESULT0)*(3.3/4096.0);
-    sensedAnalogADC.grid_voltage_B = (AdcaResultRegs.ADCRESULT0)*(3.3/4096.0);
-    sensedAnalogADC.grid_voltage_Y = (AdcaResultRegs.ADCRESULT1)*(3.3/4096.0);
-    sensedAnalogADC.prot_earth = (AdccResultRegs.ADCRESULT1)*(3.3/4096.0);
-    sensedAnalogADC.vbatt = (AdcaResultRegs.ADCRESULT2)*(3.3/4096.0);
-    sensedAnalogADC.temp_sens = (AdccResultRegs.ADCRESULT2)*(3.3/4096.0);
-    sensedAnalogADC.cp_signal = (AdcaResultRegs.ADCRESULT3)*(3.3/4096.0);
-    sensedAnalogADC.residual_curr = (AdccResultRegs.ADCRESULT3)*(3.3/4096.0);
-    sensedAnalogADC.grid_curr_B = (AdcaResultRegs.ADCRESULT4)*(3.3/4096.0);
-    sensedAnalogADC.grid_curr_Y = (AdccResultRegs.ADCRESULT4)*(3.3/4096.0);
-    sensedAnalogADC.grid_curr_R = (AdcaResultRegs.ADCRESULT5)*(3.3/4096.0);
+    sensedAnalogADC.grid_voltage_R = (AdccResultRegs.ADCRESULT0)*(3.3f/4096.0f);
+    sensedAnalogADC.grid_voltage_B = (AdcaResultRegs.ADCRESULT0)*(3.3f/4096.0f);
+    sensedAnalogADC.grid_voltage_Y = (AdcaResultRegs.ADCRESULT1)*(3.3f/4096.0f);
+    sensedAnalogADC.prot_earth = (AdccResultRegs.ADCRESULT1)*(3.3f/4096.0f);
+    sensedAnalogADC.vbatt = (AdcaResultRegs.ADCRESULT2)*(3.3f/4096.0f);
+    sensedAnalogADC.temp_sens = (AdccResultRegs.ADCRESULT2)*(3.3f/4096.0f);
+    sensedAnalogADC.cp_signal = (AdcaResultRegs.ADCRESULT3)*(3.3f/4096.0f);
+    sensedAnalogADC.residual_curr = (AdccResultRegs.ADCRESULT3)*(3.3f/4096.0f);
+    sensedAnalogADC.grid_curr_B = (AdcaResultRegs.ADCRESULT4)*(3.3f/4096.0f);
+    sensedAnalogADC.grid_curr_Y = (AdccResultRegs.ADCRESULT4)*(3.3f/4096.0f);
+    sensedAnalogADC.grid_curr_R = (AdcaResultRegs.ADCRESULT5)*(3.3f/4096.0f);
 
 //    Getting the new temperature resistance
     tempSensRes = (25500.0f/(sensedAnalogADC.temp_sens)) - 10200.0f;
@@ -650,6 +673,29 @@ interrupt void ADCA1_ISR(void){
             sum_values.prot_earth += (actualsensedvalues.prot_earth*actualsensedvalues.prot_earth);
             sum_values.residual_curr += (actualsensedvalues.residual_curr*actualsensedvalues.residual_curr);
 
+            phasevolt[mapCount] = actualsensedvalues.grid_voltage_R;
+            phasecurr[mapCount] = actualsensedvalues.grid_curr_R;
+            phasepower[mapCount++] = (actualsensedvalues.grid_curr_R*actualsensedvalues.grid_voltage_R);
+            if (mapCount >= 400){
+                mapCount = 0;
+            }
+
+            //    sum of the powers
+            sum_inst_powers.inst_power_phase_B += (actualsensedvalues.grid_curr_B * actualsensedvalues.grid_voltage_B * (-1.0f));
+            sum_inst_powers.inst_power_phase_R += (actualsensedvalues.grid_curr_R * actualsensedvalues.grid_voltage_R * (-1.0f));
+            sum_inst_powers.inst_power_phase_Y += (actualsensedvalues.grid_curr_Y * actualsensedvalues.grid_voltage_Y * (-1.0f));
+
+            if ((++power_samples_cnt) >= POWER_SAMPLES_MAX_COUNT){
+                float sum_inst_powers_allphases = 0.0f;
+                sum_inst_powers_allphases = sum_inst_powers_allphases + sum_inst_powers.inst_power_phase_B;
+                sum_inst_powers_allphases = sum_inst_powers_allphases + sum_inst_powers.inst_power_phase_R;
+                sum_inst_powers_allphases = sum_inst_powers_allphases + sum_inst_powers.inst_power_phase_Y;
+                avg_power = sum_inst_powers_allphases/((float)(POWER_SAMPLES_MAX_COUNT));
+                power_samples_cnt = 0;
+                sum_inst_powers_allphases = 0.0f;
+                memset(&sum_inst_powers, 0, sizeof(sum_inst_powers));
+            }
+
 //            For the average values
             sum_values.actualTemp += (sensedAnalogADC.actualTemp);
             sum_values.vbatt += (actualsensedvalues.vbatt);
@@ -710,7 +756,8 @@ interrupt void ADCA1_ISR(void){
         buffer = (Uint16) (rmsvalues.grid_voltage_Y*10.0f);
         can_message_seq1_phvolt.phase_seq.Upper_Byte_PhaseC = buffer>>8;
         can_message_seq1_phvolt.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
-        can_message_seq1_phvolt.phase_seq.Reserved          = 0xFF;
+        buffer = (Uint16)(sensedAnalogADC.actualTemp);
+        can_message_seq1_phvolt.phase_seq.Temperature       = (buffer&(0xff));
 
 //        CAN_sendMessage(CANA_BASE, 1, 8, can_message_seq1_phvolt.can_seq); // Sending using the mailbox 1 configured for the transmission
 
@@ -726,7 +773,7 @@ interrupt void ADCA1_ISR(void){
         buffer = (Uint16) (rmsvalues.grid_curr_Y*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = buffer>>8;
         can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
-        can_message_seq2_phcurr.phase_seq.Reserved          = 0xFF;
+        can_message_seq2_phcurr.phase_seq.Temperature          = 0xFF;
 
 //        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
 
@@ -742,7 +789,9 @@ interrupt void ADCA1_ISR(void){
         can_message_seq3_info.phase_seq.DutyCycle
         = buffer&(0x00ff);
         can_message_seq3_info.phase_seq.ConnectorState       = 0x01;
-        can_message_seq3_info.phase_seq.Reserved             = 0xffffffff;
+        buffer = (Uint16) avg_power;
+        can_message_seq3_info.phase_seq.Power_Upper_Byte     = (buffer>>8);
+        can_message_seq3_info.phase_seq.Power_Lower_Byte     = (buffer&(0x00ff));
 
 //        CAN_sendMessage(CANA_BASE, 3, 8, can_message_seq3_info.can_seq);
 
@@ -1616,8 +1665,9 @@ interrupt void CANA0_ISR(void)
 
 //    Now the actual data has got stored in the getdata.rsgMsgObjSeq2
     SeqNumberReceived = getdata.rsgMsgObjSeq2[0];
-    EVSE_Ready_To_Charge = getdata.rsgMsgObjSeq2[1];
-    inputCurrent = (float)getdata.rsgMsgObjSeq2[2];
+    EVSE_Ready_To_Charge = getdata.rsgMsgObjSeq2[1];    //for checking whether the evse is ready or not
+    inputCurrent = (float)getdata.rsgMsgObjSeq2[2];     //for the input current sent by the server to the local controller
+    authorise = (Uint16)getdata.rsgMsgObjSeq2[4];       //authentication flag sent by the server to the local controller.
 
 //    Restoring to previous configuration of the interrupts
     DINT;

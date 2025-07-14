@@ -225,6 +225,8 @@ extern float EvStateAvgVolt;
 extern float cpSignalBuffer;
 
 //#########################DEFINING THE STRUCTURES FOR THE TYPE TWO AC CHARGER#####################################
+
+//defining the enums
 typedef enum {
     CP_STATE_A = 0,  // No vehicle connected (12V)
     CP_STATE_B,      // Vehicle connected but not requesting charging (9V)
@@ -234,6 +236,33 @@ typedef enum {
     CP_STATE_F       // Error: CP shorted to +12V
 }states;
 
+typedef enum{
+    gridvoltage,
+    protearth,
+    vbatt,
+    residualcurr,
+    gridcurr,
+    cpsignal,
+    tempsens
+}sensedparams;
+
+typedef enum{
+    OFF,
+    ON
+}status;
+
+enum {
+    NotReady2Charge = 1,
+    Ready2Charge = 2
+};
+
+enum{
+    NotAuthenticated = 0,
+    Authenticated = 1,
+};
+
+
+//defining the structures
 typedef struct {
     float grid_voltage_R;
     float grid_voltage_Y;
@@ -262,16 +291,6 @@ typedef struct{
     states maxState;
 }PAIR;
 
-typedef enum{
-    gridvoltage,
-    protearth,
-    vbatt,
-    residualcurr,
-    gridcurr,
-    cpsignal,
-    tempsens
-}sensedparams;
-
 typedef struct{
     uint16_t Seq_number;
     uint16_t Upper_Byte_PhaseA;
@@ -280,7 +299,7 @@ typedef struct{
     uint16_t Lower_Byte_PhaseB;
     uint16_t Upper_Byte_PhaseC;
     uint16_t Lower_Byte_PhaseC;
-    uint16_t Reserved;
+    uint16_t Temperature;
 }CAN_SEQ;
 
 typedef struct{
@@ -290,7 +309,8 @@ typedef struct{
     uint16_t Cp_state;
     uint16_t DutyCycle;
     uint16_t ConnectorState;
-    uint32_t Reserved;
+    uint16_t Power_Upper_Byte;
+    uint16_t Power_Lower_Byte;
 }CAN_SEQ3;
 
 typedef struct{
@@ -309,10 +329,11 @@ typedef union{
     uint16_t can_seq[8];
 }CANSEQUNION3;
 
-typedef enum{
-    OFF,
-    ON
-}status;
+typedef struct {
+    float inst_power_phase_R;
+    float inst_power_phase_B;
+    float inst_power_phase_Y;
+}SUM_OF_INST_POWERS;
 
 //variables for the sensing for the type two ac charger
 //STRUCTURES
@@ -327,6 +348,7 @@ extern RXDATA getdata;
 extern SENSEDVALUES sum_values;
 extern SENSEDVALUES rmsvalues;
 extern HIGHSTATERECORDER highStateRecord;
+extern SUM_OF_INST_POWERS sum_inst_powers;
 extern PAIR pair;
 extern Uint16 EvseState;
 extern Uint16 sendMessageNow;
@@ -334,6 +356,10 @@ extern Uint16 highStateDetect;
 extern Uint16 epwmHighStateCounter;
 extern Uint16 epwmLowStateCounter;
 extern Uint16 stopCharging;
+extern float phasevolt[400];
+extern float phasecurr[400];
+extern float phasepower[400];
+extern Uint16 mapCount;
 
 //VARIABLES
 extern Uint32 count;
@@ -345,114 +371,11 @@ extern volatile Uint16* resultADCC;
 extern states EVSE_State_Detect;
 
 //###############################END OF THE VARIABLES###############################
-
-extern float R25;
-extern float BValue;
-extern float RoomTemperature;
-
-// Variables for online calculation of offsets
-extern Uint32 offsetSettingCount;
-extern Uint16 offsetSettingDone;
-extern float offsetSettingPeriod;
-extern float offsetSettingCountComplete;
-extern float hardCodedVgOffset;
-
-// Variables for averaging/rms computation over one grid cycle period
-extern float cycleCounter;
-extern float gridFrequency;
-extern float cycleCompleteCount;
-
-extern bool_t startConditionsMet;
-
-// AC variables
-extern acVariables vg;
-extern acVariables ig;
-extern acVariables iRes;
-extern acVariables iLoad;
-// DC variables
-extern dcVariables vPv;
-extern dcVariables iPv;
-extern dcVariables vDc;
-extern dcVariables tempIndGridCore;
-extern dcVariables tempIndGridCopper;
-extern dcVariables tempIndPvCore;
-extern dcVariables tempIndPvCopper;
-extern dcVariables tempHeatSink;
-
-// Variables for online calculation of hardware tripping for ac current
-extern float igOCHVol;
-extern float igOCLVol;
-extern Uint16  igOCH;
-extern Uint16  igOCL;
-extern float ipvOCVol;
-extern Uint16  ipvOC;
-
-// Variables for tripping limits
-extern float igHardwareTripLimit;
-extern float igSoftwareTripLimit;
-extern float ipvHardwareTripLimit;
-extern float ipvSoftwareTripLimit;
 extern Uint16 rmsSamples;
 extern Uint32 cameFromStateB_C;
 extern Uint32 cameFromStateB_C_cntr;
-
+//
 extern void Delay_ms(Uint16);
-
-
-// Conversions
-extern  char BCD2UpperCh( char );
-extern char BCD2LowerCh( char );
-extern Uint16 Binary2BCD(Uint16 );
-extern Uint16 BCD2Binary(Uint16 );
-
-// string functions
-extern void ftoa(float, char *, Uint16);
-extern void f64toa(float, char *, Uint16);
-extern Uint16 intToStr(Uint16 , char [], Uint16);
-extern Uint16 int32ToStr(Uint32 , char [], Uint16);
-extern void int64ToStr(Uint64 , char [], Uint16);
-extern void reverseString (char*, Uint16);
-extern void clearString (char* );
-extern float atof(const char* );
-
-// CAN related variables start
-typedef struct{
-    Uint16 gridStatus : 1;
-    Uint16 pvStatus : 1;
-    Uint16 inverterStatus : 1;
-    Uint16 inverterFault : 5;
-}phaseIndependentDataStruct;
-
-typedef struct{
-    phaseIndependentDataStruct phaseIndependentData;
-    // Grid Voltages
-    float gridVoltageA;
-    float gridVoltageB;
-    float gridVoltageC;
-    // Grid Currents
-    float gridCurrentA;
-    float gridCurrentB;
-    float gridCurrentC;
-    // Powers
-    float solarPower;
-    float gridPower;
-    float reactivePower;
-    // DC Link Voltage
-    float dcLinkVoltage;
-    // Residual Current
-    float residualCurrent;
-    // Vpv1 to Vpv10
-    float vpv[10];
-    // Ipv1 to Ipv10
-    float ipv[10];
-    Uint16 majorSWVersion : 8;
-    Uint16 minorSWVersion : 8;
-    Uint16 canSendMessage;
-}pecParametersStruct;
-extern pecParametersStruct pecParameters;
-
-#define count100ms 1250
-#define count4ms 50
 
 extern uint16_t CANASendMessage(Uint16 objectID, Uint16 dlc, Uint16 *data);
 
@@ -461,115 +384,19 @@ extern uint16_t multiframeFlag;
 extern uint16_t CANRxData[];
 extern uint16_t canTxMessage;
 
-extern uint16_t testFlag;
-// PGN values
-typedef enum{
-    startupMessagePGN = 1u,
-    changeCfgPGN
-}PGN;
-
-//CANTXFlags
-typedef enum{
-    sendCTSStartupMessage = 1u,
-    receiveDataStartupMessage,
-    sendACKStartupMessage,
-    sendCTSChangeCfg,
-    receiveDataChangeCfg,
-    sendACKChangeCfg
-}canTxFlags;
-
-// Configuration settings
-typedef enum {
-    basicConfigurations = 1u,
-    startupSettingConfigurations,
-    tripSettingsConfigurations,
-    restartTimerConfigurations,
-    calibrationSettingConfigurations,
-    inverterModeSettingConfigurations
-} ConfigurationSettings;
-
-// Parameter values
-typedef enum {
-    inverterOnOffConfig = 1u,
-    mpptModeConfig
-} BasicConfiguration;
-
-typedef enum {
-    gridLowerStartConfig = 3u,
-    gridUpperStartConfig,
-    pvLowerStartConfig,
-    pvUpperStartConfig
-} StartupSettings;
-
-typedef enum {
-    gridUnderVoltageConfig = 7u,
-    gridUpperVoltageConfig,
-    gridLowerFreqConfig,
-    gridUpperFreqConfig,
-    pvOverVoltageConfig,
-    dcLinkOverVoltageConfig,
-    pvSoftwareOverCurrentConfig,
-    pvHardwareOverCurrentConfig,
-    gridSoftwareOverCurrentConfig,
-    gridHardwareOverCurrentConfig,
-    deviceThermalTripConfig,
-    heatSinkThermalTripConfig,
-    magneticsThermalTripConfig
-} TripSettings;
-
-typedef enum {
-    restartTimerConfig = 20u
-} RestartTimerSettings;
-
-typedef enum {
-    gridVoltageCalibrationConfig = 21u,
-    gridCurrentCalibrationConfig,
-    pvVoltageCalibrationConfig,
-    pvVoltageOffsetCalibrationConfig,
-    pvCurrentCalibrationConfig,
-    pvCurrentOffsetCalibrationConfig,
-    dcLinkVoltageCalibrationConfig,
-    dcLinkVoltageOffsetCalibrationConfig,
-    positiveDCLinkVoltageCalibrationConfig,
-    positiveDCLinkVoltageOffsetCalibrationConfig,
-    negativeDCLinkVoltageCalibrationConfig,
-    negativeDCLinkVoltageOffsetCalibrationConfig
-} CalibrationSettings;
-
-typedef enum {
-    upfModeConfig = 33u,
-    activePowerControlConfig,
-    reactivePowerControlConfig,
-    fixedPowerFactorConfig,
-    inverterRatedPowerConfig,
-    invModeConfig = 44
-} InverterModeSettings;
-
-typedef enum {
-    UnityPowerFactor = 1u,
-    ActivePowerControl,
-    ReactivePowerControl,
-    FixedPowerFactor
-} InverterModes;
-
-enum {
-    NotReady2Charge = 1,
-    Ready2Charge = 2
-};
-
 // Added for testing
-//#define ADCPeriodTestON  GpioDataRegs.GPASET.bit.GPIO23
-//#define ADCPeriodTestOFF GpioDataRegs.GPACLEAR.bit.GPIO23
-//
-//#define CANPeriodTestON  GpioDataRegs.GPBSET.bit.GPIO37
-//#define CANPeriodTestOFF GpioDataRegs.GPBCLEAR.bit.GPIO37
+#define ADCPeriodTestON  GpioDataRegs.GPASET.bit.GPIO23
+#define ADCPeriodTestOFF GpioDataRegs.GPACLEAR.bit.GPIO23
+
+#define CANPeriodTestON  GpioDataRegs.GPBSET.bit.GPIO37
+#define CANPeriodTestOFF GpioDataRegs.GPBCLEAR.bit.GPIO37
 //---------------------------------------------------------------------------
 // Macros
 //
 
-// The following pointer to a function call calibrates the ADC reference, 
+// The following pointer to a function call calibrates the ADC reference,
 // DAC offset, and internal oscillators
-//#define Device_cal (void   (*)(void))0x070282
+#define Device_cal (void   (*)(void))0x070282
 
 // The following pointers to functions calibrate the ADC linearity.  Use this
 // in the AdcSetMode(...) function only
@@ -602,7 +429,12 @@ extern Uint16 canBufferSeq3[4];
 extern Uint16 EVSE_Ready_To_Charge;
 extern Uint16 SeqNumberReceived;
 extern states EVSE_State_Detect;
-#define TEN_SECOND_COUNT 200000 //TWO LAKHS WITH RESPECT TO THE SAMPLING FREQUENCY OF 20kHz
+extern Uint16 authorise;
+extern float sum_of_inst_power;
+extern float avg_power;
+#define TEN_SECOND_COUNT 200000
+#define POWER_SAMPLES_MAX_COUNT 2000
+extern Uint16 power_samples_cnt;
 // The following pointer to a function call looks up the ADC offset trim for a
 // given condition. Use this in the AdcSetMode(...) function only.
 #define GetAdcOffsetTrimOTP (Uint16 (*)(Uint16 OTPoffset))0x0703AC

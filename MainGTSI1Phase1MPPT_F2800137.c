@@ -93,11 +93,20 @@ HIGHSTATERECORDER highStateRecord = {
      .greaterThan_2_E = 0
 };
 
+SUM_OF_INST_POWERS sum_inst_powers = {
+     .inst_power_phase_B = 0.0f,
+     .inst_power_phase_R = 0.0f,
+     .inst_power_phase_Y = 0.0f,
+};
+
 PAIR pair = {
      .maxCount = 0,
      .maxState = CP_STATE_A,
 };
-
+float phasevolt[400];
+float phasecurr[400];
+float phasepower[400];
+Uint16 mapCount = 0;
 Uint32 count = 0;
 Uint32 canCount = 0;
 Uint16 rmsSamples = samplingFreq/signalFreq;
@@ -139,6 +148,10 @@ Uint16 epwmLowStateCounter = 0;
 Uint16 stopCharging = 0;
 Uint32 cameFromStateB_C = 0;
 Uint32 cameFromStateB_C_cntr = 0;
+Uint16 authorise = NotAuthenticated;
+float sum_of_inst_power = 0.0f;
+float avg_power = 0.0f;
+Uint16 power_samples_cnt = 0;
 
 //For the state detection logic
 void main(void)
