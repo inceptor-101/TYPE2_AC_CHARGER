@@ -223,6 +223,7 @@ extern Uint32 transition_counter;
 extern float sample_time;
 extern float EvStateAvgVolt;
 extern float cpSignalBuffer;
+extern Uint16 chargingComplete;
 
 //#########################DEFINING THE STRUCTURES FOR THE TYPE TWO AC CHARGER#####################################
 

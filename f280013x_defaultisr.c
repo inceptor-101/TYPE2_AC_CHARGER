@@ -463,6 +463,7 @@ interrupt void ADCA1_ISR(void){
                 case CP_STATE_A:{
                     switch (EVSE_Ready_To_Charge){
                         case NotReady2Charge:{
+                            chargingComplete = 0;
                             turnMainRelayOff;
                             if (((++cameFromStateB_C_cntr) <= TEN_SECOND_COUNT) && (cameFromStateB_C==1)){
                                 break;
@@ -475,9 +476,23 @@ interrupt void ADCA1_ISR(void){
                             }
                         }
                         case Ready2Charge:{
-                            turnMainRelayOff;
-                            dutyCycle = 1.0f;
-                            break;
+                            switch (authorise){
+                                case Authenticated: {
+                                    if (dutyCycle < 0.95f && dutyCycle > 0.05f){
+                                        chargingComplete = 1;
+                                    }
+                                    break;
+                                }
+                                case NotAuthenticated: {
+                                    if (dutyCycle < 1.0f){
+                                        chargingComplete = 0;
+                                    }
+                                    chargingComplete = 0;
+                                    turnMainRelayOff;
+                                    dutyCycle = 1.0f;
+                                    break;
+                                }
+                            }
                         }
                     }
                     break;
@@ -773,7 +788,8 @@ interrupt void ADCA1_ISR(void){
         buffer = (Uint16) (rmsvalues.grid_curr_Y*10.0f);
         can_message_seq2_phcurr.phase_seq.Upper_Byte_PhaseC = buffer>>8;
         can_message_seq2_phcurr.phase_seq.Lower_Byte_PhaseC = buffer&(0x00ff);
-        can_message_seq2_phcurr.phase_seq.Temperature          = 0xFF;
+        buffer = (Uint16)chargingComplete;
+        can_message_seq2_phcurr.phase_seq.Temperature       = buffer&(0x00ff);
 
 //        CAN_sendMessage(CANA_BASE, 2, 8, can_message_seq2_phcurr.can_seq);  //Sending using the mailbox 2 configured for the transmission
 
