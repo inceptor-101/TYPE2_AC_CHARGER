@@ -21,13 +21,13 @@ Author : Varun Sharma, EE Intern
 
 volatile Uint16* resultADCA = &AdcaResultRegs.ADCRESULT0;
 volatile Uint16* resultADCC = &AdccResultRegs.ADCRESULT0;
-SENSEDVALUES sensedAnalogADC;
-SENSEDVALUES actualsensedvalues;
+SENSEDVALUES sensedAnalogADC;           //For storing the sensed analog values of the parameters
+SENSEDVALUES actualsensedvalues;        //For considering the effect of the multipliers and offsets on sensed values
 CANSEQUNION can_message_seq1_phvolt;
-CANSEQUNION can_message_seq2_phcurr;
+CANSEQUNION can_message_seq2_phcurr;    //For sending the can phase sequences
 CANSEQUNION3 can_message_seq3_info;
 //#######Declaring the multipliers##########
-SENSEDVALUES multipliers = {
+SENSEDVALUES multipliers = {            //For op-amp multipliers
      .grid_voltage_R = 296.9697f,
      .grid_voltage_Y = 296.9697f,
      .grid_voltage_B = 296.9697f,
@@ -42,7 +42,7 @@ SENSEDVALUES multipliers = {
 };
 
 //#########Declaring the offsets#########
-SENSEDVALUES AvgOffsets = {
+SENSEDVALUES AvgOffsets = {             //For the op-amp offsets calculated from the circuits
      .grid_voltage_R = 0.0f,
      .grid_voltage_Y = 0.0f,
      .grid_voltage_B = 0.0f,
@@ -56,7 +56,7 @@ SENSEDVALUES AvgOffsets = {
      .vbatt = 0.0f
 };
 
-SENSEDVALUES sum_values = {
+SENSEDVALUES sum_values = {             //Summing the sensed values to find the average values
      .grid_voltage_R = 0.0f,
      .grid_voltage_Y = 0.0f,
      .grid_voltage_B = 0.0f,
@@ -70,7 +70,7 @@ SENSEDVALUES sum_values = {
      .vbatt = 0.0f
 };
 
-SENSEDVALUES rmsvalues = {
+SENSEDVALUES rmsvalues = {              //  For getting the rms values of the ac parameters
      .grid_voltage_R = 0.0f,
      .grid_voltage_Y = 0.0f,
      .grid_voltage_B = 0.0f,
@@ -85,7 +85,7 @@ SENSEDVALUES rmsvalues = {
 };
 
 //For the state detection logic
-HIGHSTATERECORDER highStateRecord = {
+HIGHSTATERECORDER highStateRecord = {   //For keeping the record of the states encountered during every 100ms time period, we consider that state as actual state that occurs most frequently in this
      .greaterThan10_A = 0,
      .greaterThan7_B = 0,
      .greaterThan4_C = 0,
@@ -93,24 +93,24 @@ HIGHSTATERECORDER highStateRecord = {
      .greaterThan_2_E = 0
 };
 
-SUM_OF_INST_POWERS sum_inst_powers = {
+SUM_OF_INST_POWERS sum_inst_powers = {  //For the average powers to be sent to the MCU for the power measurement
      .inst_power_phase_B = 0.0f,
      .inst_power_phase_R = 0.0f,
      .inst_power_phase_Y = 0.0f,
 };
 
-PAIR pair = {
+PAIR pair = {                           //It keeps the record of the state that occured the most in the high state record with frequency of occurence
      .maxCount = 0,
      .maxState = CP_STATE_A,
 };
-float phasevolt[400];
+float phasevolt[400];                   //Reference arrays for the waveform plotting
 float phasecurr[400];
 float phasepower[400];
 Uint16 mapCount = 0;
 Uint32 count = 0;
 Uint32 canCount = 0;
-Uint16 rmsSamples = samplingFreq/signalFreq;
-Uint16 epwmSamples = samplingFreq/pwmfreq;
+Uint16 rmsSamples = samplingFreq/signalFreq;    //No of samples in a given sine wave of given frequnecy of 50Hz
+Uint16 epwmSamples = samplingFreq/pwmfreq;      //No of epwm samples taken of ADC of a given PWM
 Uint16 Pwmstatus = OFF;
 unsigned char transmit[8];
 uint16_t CANTxData[8];
@@ -118,7 +118,7 @@ uint16_t CANRxData[8];
 RXDATA getdata;
 Uint16 EvseState = OFF;
 Uint16 special = 0;
-Uint32 counter = 0;
+Uint32 counter = 0;//
 volatile float tempSensRes = 0.0f;
 volatile float actualTemp = 0.0f;
 float beta = 3977.0f;
@@ -152,6 +152,7 @@ Uint16 authorise = NotAuthenticated;
 float sum_of_inst_power = 0.0f;
 float avg_power = 0.0f;
 Uint16 power_samples_cnt = 0;
+Uint16 chargingComplete = 0;
 
 //For the state detection logic
 void main(void)

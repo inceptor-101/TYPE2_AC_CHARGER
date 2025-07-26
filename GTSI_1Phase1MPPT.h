@@ -351,7 +351,7 @@ extern SENSEDVALUES rmsvalues;
 extern HIGHSTATERECORDER highStateRecord;
 extern SUM_OF_INST_POWERS sum_inst_powers;
 extern PAIR pair;
-extern Uint16 EvseState;
+//extern Uint16 EvseState;
 extern Uint16 sendMessageNow;
 extern Uint16 highStateDetect;
 extern Uint16 epwmHighStateCounter;

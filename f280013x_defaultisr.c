@@ -484,7 +484,7 @@ interrupt void ADCA1_ISR(void){
                                     break;
                                 }
                                 case NotAuthenticated: {
-                                    if (dutyCycle < 1.0f){
+                                    if (dutyCycle < 0.95f && dutyCycle > 0.05f){
                                         chargingComplete = 0;
                                     }
                                     chargingComplete = 0;
